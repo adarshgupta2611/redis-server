@@ -1,5 +1,6 @@
 import argparse
-from typing import List
+import os
+from typing import List, Dict
 import struct
 
 redis_dict = {}
@@ -49,29 +50,48 @@ def redis_args_parse():
         dbfilename = args.dbfilename
 
 
-def read_rdb_config() -> str:
+def read_rdb_config() -> Dict:
     """
-    Reads the Redis database from the RDB file and returns the value associated with the "dbfilename" configuration option.
-
-    Args:
-        dir (str): The directory where the RDB file is located
-        dbfilename (str): The name of the RDB file
+    Reads the RDB configuration from the specified directory and database file
 
     Returns:
-        str: The value associated with the "dbfilename" configuration option
+        Dict: _description_
     """
-    
     rdb_file_loc: str = dir + "/" + dbfilename
 
-    with open(rdb_file_loc, "rb") as f:
-        while operand := f.read(1):
-            if operand == b"\xfb":
-                break
-        f.read(3)
-        length = struct.unpack("B", f.read(1))[0]
-        if length >> 6 == 0b00:
-            length = length & 0b00111111
-        else:
-            length = 0
-        val = f.read(length).decode()
-        return val
+    if os.path.exists(rdb_file_loc):
+        with open(rdb_file_loc, "rb") as rdb_file:
+            rdb_content = str(rdb_file.read())
+            if rdb_content:
+                splited_parts = rdb_content.split("\\")
+                resizedb_index = splited_parts.index("xfb")
+                key_index = resizedb_index + 4
+                value_index = key_index + 1
+                key_bytes = splited_parts[key_index]
+                value_bytes = splited_parts[value_index]
+                key = remove_bytes_characters(key_bytes)
+                value = remove_bytes_characters(value_bytes)
+                return {key: value}
+
+        # If RDB file doesn't exist or no args provided, return
+        return {}
+
+
+def remove_bytes_characters(string: str) -> str:
+    """
+    Removes the bytes characters from the given string and returns the original string
+
+    Example:
+        remove_bytes_characters("x1b[32mmykey\x1b[0m") -> "mykey"
+        remove_bytes_characters("t10\x00myvalue\x00") -> "myvalue"
+
+    Note:
+        The bytes characters are used to represent the color and font attributes in the Redis protocol.
+
+    Returns:
+        str: The original string without bytes characters
+    """
+    if string.startswith("x"):
+        return string[3:]
+    elif string.startswith("t"):
+        return string[1:]

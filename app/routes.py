@@ -70,7 +70,10 @@ def choose_argument_and_send_output(
     elif message_arr[0].lower() == "set":
         redis_commands.set_command_helper(message_arr, n_args, client_socket)
     elif message_arr[0].lower() == "get":
-        redis_commands.get_command_helper(message_arr, n_args, client_socket)
+        if redis_utils.dir or redis_utils.dbfilename:
+            redis_commands.rdb_get_command_helper(message_arr, n_args, client_socket)
+        else:
+            redis_commands.get_command_helper(message_arr, n_args, client_socket)
     elif message_arr[0].lower() == "config":
         redis_commands.config_get_command_helper(message_arr, n_args, client_socket)
     elif message_arr[0].lower() == "keys":

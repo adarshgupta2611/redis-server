@@ -103,5 +103,28 @@ def keys_get_command_helper(message_arr: List[str], n_args: int, client_socket: 
         client_socket (socket): _description_
     """
     if message_arr[1].lower() == "*":
-        msg = redis_utils.read_rdb_config()
-        client_socket.send(f"*1\r\n${len(msg)}\r\n{msg}\r\n".encode())
+        rdb_content = redis_utils.read_rdb_config()
+        key = list(rdb_content.keys())[0]
+        client_socket.send("*1\r\n${}\r\n{}\r\n".format(len(key), key).encode())
+
+
+def rdb_get_command_helper(message_arr: List[str], n_args: int, client_socket: socket):
+    """
+    Handles the RDB GET command and retrieves the value associated with the given key from the Redis RDB file.
+
+    Example:
+        rdb_get_command_helper(["RDB", "mykey"], 2, client_socket)
+
+    Args:
+        message_arr (List[str]): _description_
+        n_args (int): _description_
+        client_socket (socket): _description_
+    """
+    if message_arr[1]:
+        rdb_content = redis_utils.read_rdb_config()
+        value = rdb_content.get(message_arr[1])
+        if value:
+            resp = convert_to_resp(value)
+            client_socket.send(resp.encode())
+        else:
+            client_socket.send("*0\r\n".encode())
