@@ -1,6 +1,8 @@
 import socket
 from typing import List, Tuple
-from .redis import redis_dict
+from .redis_commands import set_command_helper, get_command_helper
+from .redis_utils import convert_to_resp
+
 
 def accept_client_concurrently(client_socket: socket, addr: str):
     """
@@ -67,33 +69,9 @@ def choose_argument_and_send_output(
         resp_msg = convert_to_resp(message_arr[1])
         client_socket.send(resp_msg.encode())
     elif message_arr[0].lower() == "set":
-        redis_dict.update({message_arr[1]: message_arr[2]})
-        if n_args >= 3:
-            client_socket.send(b"+OK\r\n")
-        else:
-            client_socket.send(b"-ERR wrong number of arguments for 'SET'\r\n")
+        set_command_helper(message_arr, n_args, client_socket)
     elif message_arr[0].lower() == "get":
-        if redis_dict.get(message_arr[1]):
-            resp = convert_to_resp(redis_dict.get(message_arr[1]))
-            client_socket.send(resp.encode())
-        else:
-            client_socket.send(b"$-1\r\n")
+        get_command_helper(message_arr, n_args, client_socket)
 
-def convert_to_resp(msg: str) -> str:
-    """
-    Converts a string to RESP (Redis Protocol) format
 
-    Example:
-        convert_to_resp("Hello World") -> "*2\r\n$5\r\nHello\r\n$5\r\nWorld\r\n"
 
-    Args:
-        msg (str): The input string to be converted
-
-    Returns:
-        str: _description_
-    """
-    msg_arr: List[str] = msg.split(" ")
-    resp: str = f"*{len(msg_arr)}" if len(msg_arr) > 1 else ""
-    for s in msg_arr:
-        resp += f"${len(s)}\r\n{s}\r\n"
-    return resp
