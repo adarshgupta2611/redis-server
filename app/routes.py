@@ -1,7 +1,7 @@
 import socket
 from typing import List, Tuple
-from .redis_commands import set_command_helper, get_command_helper
-from .redis_utils import convert_to_resp
+from app import redis_commands
+from app import redis_utils
 
 
 def accept_client_concurrently(client_socket: socket, addr: str):
@@ -62,16 +62,14 @@ def choose_argument_and_send_output(
         n_args (int): The number of arguments
         client_socket (socket): The socket representing the client connection
     """
-
     if message_arr[0].lower() == "ping":
         client_socket.send(b"+PONG\r\n")
     elif message_arr[0].lower() == "echo":
-        resp_msg = convert_to_resp(message_arr[1])
+        resp_msg = redis_utils.convert_to_resp(message_arr[1])
         client_socket.send(resp_msg.encode())
     elif message_arr[0].lower() == "set":
-        set_command_helper(message_arr, n_args, client_socket)
+        redis_commands.set_command_helper(message_arr, n_args, client_socket)
     elif message_arr[0].lower() == "get":
-        get_command_helper(message_arr, n_args, client_socket)
-
-
-
+        redis_commands.get_command_helper(message_arr, n_args, client_socket)
+    elif message_arr[0].lower() == "config":
+        redis_commands.config_get_command_helper(message_arr, n_args, client_socket)

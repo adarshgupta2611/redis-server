@@ -1,6 +1,7 @@
 import socket
 import threading
 from .routes import accept_client_concurrently
+from .redis_utils import redis_args_parse
 
 
 def main():
@@ -10,6 +11,7 @@ def main():
     The 'reuse_port=True' option allows multiple connections to the same port
     This is useful when multiple clients connect simultaneously
     """
+    redis_args_parse()
 
     with socket.create_server(("localhost", 6379), reuse_port=True) as server_socket:
         server_socket.listen()

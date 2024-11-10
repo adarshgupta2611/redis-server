@@ -1,5 +1,9 @@
+import argparse
 from typing import List
 
+redis_dict = {}
+dir = ""
+dbfilename = ""
 
 def convert_to_resp(msg: str) -> str:
     """
@@ -15,7 +19,20 @@ def convert_to_resp(msg: str) -> str:
         str: _description_
     """
     msg_arr: List[str] = msg.split(" ")
-    resp: str = f"*{len(msg_arr)}" if len(msg_arr) > 1 else ""
+    resp: str = f"*{len(msg_arr)}\r\n" if len(msg_arr) > 1 else ""
     for s in msg_arr:
         resp += f"${len(s)}\r\n{s}\r\n"
     return resp
+
+
+def redis_args_parse():
+    parser = argparse.ArgumentParser()
+    parser.add_argument('--dir', type=str)
+    parser.add_argument('--dbfilename', type=str)
+    args = parser.parse_args()
+    global dir, dbfilename
+
+    if args.dir:
+        dir = args.dir
+    if args.dbfilename:
+        dbfilename = args.dbfilename
