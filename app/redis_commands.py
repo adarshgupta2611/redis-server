@@ -27,7 +27,9 @@ def set_command_helper(message_arr: List[str], n_args: int, client_socket: socke
             time_to_expire = datetime.now() + timedelta(
                 milliseconds=int(message_arr[index_px + 1])
             )
-            redis_utils.redis_dict.update({message_arr[1]: (message_arr[2], time_to_expire)})
+            redis_utils.redis_dict.update(
+                {message_arr[1]: (message_arr[2], time_to_expire)}
+            )
         else:
             redis_utils.redis_dict.update({message_arr[1]: message_arr[2]})
 
@@ -67,7 +69,18 @@ def get_command_helper(message_arr: List[str], n_args: int, client_socket: socke
 def config_get_command_helper(
     message_arr: List[str], n_args: int, client_socket: socket
 ):
-    
+    """
+    Handles the CONFIG GET command and retrieves the value associated with the given configuration option from Redis.
+
+    Example:
+        config_get_command_helper(["CONFIG", "GET", "dir"], 3, client_socket)
+        config_get_command_helper(["CONFIG", "GET", "dbfilename"], 3, client_socket)
+
+    Args:
+        message_arr (List[str]): _description_
+        n_args (int): _description_
+        client_socket (socket): _description_
+    """
     if message_arr[1].lower() == "get":
         if message_arr[2].lower() == "dir":
             resp = convert_to_resp(f"dir {redis_utils.dir}")
@@ -75,3 +88,20 @@ def config_get_command_helper(
         elif message_arr[2].lower() == "dbfilename":
             resp = convert_to_resp(f"dbfilename {redis_utils.dbfilename}")
             client_socket.send(resp.encode())
+
+
+def keys_get_command_helper(message_arr: List[str], n_args: int, client_socket: socket):
+    """
+    Handles the KEYS command and retrieves all keys from the Redis dictionary.
+
+    Example:
+        keys_get_command_helper(["KEYS", "*"], 2, client_socket)
+
+    Args:
+        message_arr (List[str]): _description_
+        n_args (int): _description_
+        client_socket (socket): _description_
+    """
+    if message_arr[1].lower() == "*":
+        msg = redis_utils.read_rdb_config()
+        client_socket.send(f"*1\r\n${len(msg)}\r\n{msg}\r\n".encode())

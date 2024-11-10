@@ -73,3 +73,5 @@ def choose_argument_and_send_output(
         redis_commands.get_command_helper(message_arr, n_args, client_socket)
     elif message_arr[0].lower() == "config":
         redis_commands.config_get_command_helper(message_arr, n_args, client_socket)
+    elif message_arr[0].lower() == "keys":
+        redis_commands.keys_get_command_helper(message_arr, n_args, client_socket)
