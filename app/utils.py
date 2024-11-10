@@ -1,6 +1,6 @@
 import socket
 from typing import List, Tuple
-
+from .redis import redis_dict
 
 def accept_client_concurrently(client_socket: socket, addr: str):
     """
@@ -60,12 +60,24 @@ def choose_argument_and_send_output(
         n_args (int): The number of arguments
         client_socket (socket): The socket representing the client connection
     """
+
     if message_arr[0].lower() == "ping":
         client_socket.send(b"+PONG\r\n")
     elif message_arr[0].lower() == "echo":
         resp_msg = convert_to_resp(message_arr[1])
         client_socket.send(resp_msg.encode())
-
+    elif message_arr[0].lower() == "set":
+        redis_dict.update({message_arr[1]: message_arr[2]})
+        if n_args >= 3:
+            client_socket.send(b"+OK\r\n")
+        else:
+            client_socket.send(b"-ERR wrong number of arguments for 'SET'\r\n")
+    elif message_arr[0].lower() == "get":
+        if redis_dict.get(message_arr[1]):
+            resp = convert_to_resp(redis_dict.get(message_arr[1]))
+            client_socket.send(resp.encode())
+        else:
+            client_socket.send(b"$-1\r\n")
 
 def convert_to_resp(msg: str) -> str:
     """
