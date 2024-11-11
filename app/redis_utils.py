@@ -62,19 +62,14 @@ def read_rdb_config() -> Dict:
     if os.path.exists(rdb_file_loc):
         with open(rdb_file_loc, "rb") as rdb_file:
             rdb_content = str(rdb_file.read())
-            print(f"Rdb content is {rdb_content}")
             if rdb_content:
                 splited_parts = rdb_content.split("\\")
-                print(f"splited parts are {splited_parts}")
                 resizedb_index = splited_parts.index("xfb")
                 key_index = resizedb_index + 4
-                # value_index = key_index + 1
-                # key_bytes = splited_parts[key_index]
-                # value_bytes = splited_parts[value_index]
                 rdb_config = {}
                 is_key = True
-                key,value = "", ""
-                for i in range(key_index,len(splited_parts)):
+                key, value = "", ""
+                for i in range(key_index, len(splited_parts)):
                     if splited_parts[i] == "xff":
                         break
                     if is_key:
@@ -84,7 +79,7 @@ def read_rdb_config() -> Dict:
                         is_key = True
                     else:
                         value = remove_bytes_characters(splited_parts[i])
-                    rdb_config.update({key:value})        
+                    rdb_config.update({key: value})
                 return rdb_config
 
         # If RDB file doesn't exist or no args provided, return

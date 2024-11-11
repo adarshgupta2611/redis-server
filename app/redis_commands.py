@@ -101,7 +101,6 @@ def keys_get_command_helper(message_arr: List[str], n_args: int, client_socket: 
     """
     if message_arr[1].lower() == "*":
         rdb_content = redis_utils.read_rdb_config()
-        print(f"RDB Content in keys_get_command_helper is {rdb_content}")
         keys = list(rdb_content.keys())
         resp = ""
         if len(keys) == 1:
