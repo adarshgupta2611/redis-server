@@ -92,10 +92,7 @@ def config_get_command_helper(
 
 def keys_get_command_helper(message_arr: List[str], n_args: int, client_socket: socket):
     """
-    Handles the KEYS command and retrieves all keys from the Redis dictionary.
-
-    Example:
-        keys_get_command_helper(["KEYS", "*"], 2, client_socket)
+    Handles the KEYS command and retrieves all keys in the Redis dictionary.
 
     Args:
         message_arr (List[str]): _description_
@@ -104,8 +101,14 @@ def keys_get_command_helper(message_arr: List[str], n_args: int, client_socket: 
     """
     if message_arr[1].lower() == "*":
         rdb_content = redis_utils.read_rdb_config()
-        key = list(rdb_content.keys())[0]
-        client_socket.send("*1\r\n${}\r\n{}\r\n".format(len(key), key).encode())
+        print(f"RDB Content in keys_get_command_helper is {rdb_content}")
+        keys = list(rdb_content.keys())
+        resp = ""
+        if len(keys) == 1:
+            resp = client_socket.send("*1\r\n${}\r\n{}\r\n".format(len(keys[0]), keys[0]).encode())
+        else:
+            resp = convert_to_resp(" ".join(keys))
+        client_socket.send(resp.encode())
 
 
 def rdb_get_command_helper(message_arr: List[str], n_args: int, client_socket: socket):
