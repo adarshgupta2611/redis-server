@@ -1,4 +1,5 @@
 import socket
+import time
 from typing import List, Tuple
 from datetime import datetime, timedelta
 from .redis_utils import convert_to_resp
@@ -100,7 +101,7 @@ def keys_get_command_helper(message_arr: List[str], n_args: int, client_socket: 
         client_socket (socket): _description_
     """
     if message_arr[1].lower() == "*":
-        rdb_content = redis_utils.read_rdb_config()
+        rdb_content = redis_utils.parse_rdb()
         keys = list(rdb_content.keys())
         resp = ""
         if len(keys) == 1:
@@ -123,10 +124,16 @@ def rdb_get_command_helper(message_arr: List[str], n_args: int, client_socket: s
         client_socket (socket): _description_
     """
     if message_arr[1]:
-        rdb_content = redis_utils.read_rdb_config()
+        rdb_content = redis_utils.parse_rdb()
+        print(f"In rdb_get_command_helper rdb_content is {rdb_content}")
         value = rdb_content.get(message_arr[1])
         if value:
-            resp = convert_to_resp(value)
+            if value[1]:
+                curr = time.time_ns()
+                if curr>value[1]:
+                    client_socket.send("$-1\r\n".encode())
+                    return
+            resp = convert_to_resp(value[0])
             client_socket.send(resp.encode())
         else:
             client_socket.send("*0\r\n".encode())
