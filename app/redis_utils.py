@@ -6,6 +6,7 @@ import struct
 redis_dict = {}
 dir = ""
 dbfilename = ""
+port :int = 6379
 
 
 def convert_to_resp(msg: str) -> str:
@@ -41,13 +42,17 @@ def redis_args_parse():
     parser = argparse.ArgumentParser()
     parser.add_argument("--dir", type=str)
     parser.add_argument("--dbfilename", type=str)
+    parser.add_argument("--port", type=int)
     args = parser.parse_args()
-    global dir, dbfilename
-
+    global dir, dbfilename, port
     if args.dir:
         dir = args.dir
     if args.dbfilename:
         dbfilename = args.dbfilename
+    if args.port:
+        port = int(args.port)
+        
+    
 
 
 def parse_rdb() -> dict[bytes, tuple[bytes, int | None]]:
@@ -130,76 +135,3 @@ def parse_keyvalue(data: bytes, pos: int) -> tuple[bytes, bytes, int]:
     key, pos = parse_db_string(data, pos)
     val, pos = parse_db_string(data, pos)
     return (key, val, pos)
-
-
-# def read_rdb_config() -> Dict:
-#     """
-#     Reads the RDB configuration from the specified directory and database file
-
-#     Returns:
-#         Dict: _description_
-#     """
-#     rdb_file_loc: str = dir + "/" + dbfilename
-
-#     if os.path.exists(rdb_file_loc):
-#         with open(rdb_file_loc, "rb") as rdb_file:
-#             rdb_bytes_content = rdb_file.read()
-#             rdb_content = str(rdb_bytes_content)
-#             print(f"rdb_content is {rdb_content}")
-#             print(f"Length of bytes {len(rdb_bytes_content)} and {len(rdb_content)}")
-#             if rdb_content:
-#                 splited_parts = rdb_content.split("\\")
-#                 print(f"{splited_parts}")
-#                 resizedb_index = splited_parts.index("xfb")
-#                 key_index = resizedb_index + 3
-#                 rdb_config = {}
-#                 is_key = True
-#                 key, value, expiry = "", "", ""
-#                 i=key_index
-#                 while i < len(splited_parts):
-#                     print(f"i is {i} and splited_parts[i] is {splited_parts[i]}")
-#                     if splited_parts[i] == "xff":
-#                         break
-#                     if splited_parts[i] == "xfc":
-#                         parse_rdb()
-#                         expiry = int.from_bytes(splited_parts[i : i + 8], "little") * 1_000_000
-#                         print(f"Expiry is {expiry}")
-#                         i += 8
-#                         continue
-#                     elif is_key:
-#                         key = remove_bytes_characters(splited_parts[i])
-#                         is_key = False
-#                     elif splited_parts[i] == "x00":
-#                         is_key = True
-#                     else:
-#                         value = remove_bytes_characters(splited_parts[i])
-#                     if expiry:
-#                         rdb_config.update({key: (value, expiry)})
-#                     else:
-#                         rdb_config.update({key: value})
-#                     key, value, expiry = "", "", ""
-#                     i+=1
-#                 return rdb_config
-
-#         # If RDB file doesn't exist or no args provided, return
-#         return {}
-
-
-# def remove_bytes_characters(string: str) -> str:
-#     """
-#     Removes the bytes characters from the given string and returns the original string
-
-#     Example:
-#         remove_bytes_characters("x1b[32mmykey\x1b[0m") -> "mykey"
-#         remove_bytes_characters("t10\x00myvalue\x00") -> "myvalue"
-
-#     Note:
-#         The bytes characters are used to represent the color and font attributes in the Redis protocol.
-
-#     Returns:
-#         str: The original string without bytes characters
-#     """
-#     if string.startswith("x"):
-#         return string[3:]
-#     elif string.startswith("t") or string.startswith("n"):
-#         return string[1:]

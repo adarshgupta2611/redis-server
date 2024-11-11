@@ -125,7 +125,6 @@ def rdb_get_command_helper(message_arr: List[str], n_args: int, client_socket: s
     """
     if message_arr[1]:
         rdb_content = redis_utils.parse_rdb()
-        print(f"In rdb_get_command_helper rdb_content is {rdb_content}")
         value = rdb_content.get(message_arr[1])
         if value:
             if value[1]:
