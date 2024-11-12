@@ -7,6 +7,7 @@ redis_dict = {}
 dir = ""
 dbfilename = ""
 port :int = 6379
+replicaof = ""
 
 
 def convert_to_resp(msg: str) -> str:
@@ -43,14 +44,17 @@ def redis_args_parse():
     parser.add_argument("--dir", type=str)
     parser.add_argument("--dbfilename", type=str)
     parser.add_argument("--port", type=int)
+    parser.add_argument("--replicaof", type=str)
     args = parser.parse_args()
-    global dir, dbfilename, port
+    global dir, dbfilename, port, replicaof
     if args.dir:
         dir = args.dir
     if args.dbfilename:
         dbfilename = args.dbfilename
     if args.port:
         port = int(args.port)
+    if args.replicaof:
+        replicaof = args.replicaof
         
     
 

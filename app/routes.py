@@ -79,5 +79,4 @@ def choose_argument_and_send_output(
     elif message_arr[0].lower() == "keys":
         redis_commands.keys_get_command_helper(message_arr, n_args, client_socket)
     elif message_arr[0].lower() == "info":
-        resp_msg = redis_utils.convert_to_resp("role:master")
-        client_socket.send(resp_msg.encode())
+        redis_commands.info_command_helper(message_arr, n_args, client_socket)

@@ -105,7 +105,9 @@ def keys_get_command_helper(message_arr: List[str], n_args: int, client_socket: 
         keys = list(rdb_content.keys())
         resp = ""
         if len(keys) == 1:
-            resp = client_socket.send("*1\r\n${}\r\n{}\r\n".format(len(keys[0]), keys[0]).encode())
+            resp = client_socket.send(
+                "*1\r\n${}\r\n{}\r\n".format(len(keys[0]), keys[0]).encode()
+            )
         else:
             resp = convert_to_resp(" ".join(keys))
         client_socket.send(resp.encode())
@@ -129,10 +131,22 @@ def rdb_get_command_helper(message_arr: List[str], n_args: int, client_socket: s
         if value:
             if value[1]:
                 curr = time.time_ns()
-                if curr>value[1]:
+                if curr > value[1]:
                     client_socket.send("$-1\r\n".encode())
                     return
             resp = convert_to_resp(value[0])
             client_socket.send(resp.encode())
         else:
             client_socket.send("*0\r\n".encode())
+
+
+def info_command_helper(message_arr: List[str], n_args: int, client_socket: socket):
+    if message_arr[1].lower() == "replication":
+        data = "role:master"
+        print(
+            f"Inside info_command_helper redis_utils.replicaof is {redis_utils.replicaof}"
+        )
+        if redis_utils.replicaof:
+            data = "role:slave"
+        resp_msg = redis_utils.convert_to_resp(data)
+        client_socket.send(resp_msg.encode())
