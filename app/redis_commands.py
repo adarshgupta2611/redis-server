@@ -147,5 +147,4 @@ def info_command_helper(message_arr: List[str], n_args: int, client_socket: sock
             data = "role:slave"
         data += "master_replid:8371b4fb1155b71f4a04d3e1bc3e18c4a990aeebmaster_repl_offset:0"
         resp_msg = redis_utils.convert_to_resp(data)
-        print(f"Resp Msg is {resp_msg}")
         client_socket.send(resp_msg.encode())

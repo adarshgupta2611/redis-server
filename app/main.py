@@ -13,6 +13,10 @@ def main():
     This is useful when multiple clients connect simultaneously
     """
     redis_args_parse()
+    if redis_utils.replicaof:
+           replica = redis_utils.replicaof.split(" ")
+           redis_utils.perform_handshake(replica[0], int(replica[1]))
+           
     with socket.create_server(("localhost", redis_utils.port), reuse_port=True) as server_socket:
         server_socket.listen()
 

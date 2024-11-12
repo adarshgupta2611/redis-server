@@ -1,12 +1,13 @@
 import argparse
 import os
+import socket
 from typing import List, Dict
 import struct
 
 redis_dict = {}
 dir = ""
 dbfilename = ""
-port :int = 6379
+port: int = 6379
 replicaof = ""
 
 
@@ -55,8 +56,6 @@ def redis_args_parse():
         port = int(args.port)
     if args.replicaof:
         replicaof = args.replicaof
-        
-    
 
 
 def parse_rdb() -> dict[bytes, tuple[bytes, int | None]]:
@@ -139,3 +138,8 @@ def parse_keyvalue(data: bytes, pos: int) -> tuple[bytes, bytes, int]:
     key, pos = parse_db_string(data, pos)
     val, pos = parse_db_string(data, pos)
     return (key, val, pos)
+
+
+def perform_handshake(host: str, port: int):
+    master_socket = socket.create_connection((host, port))
+    master_socket.send(str.encode("*1\r\n$4\r\nping\r\n"))
