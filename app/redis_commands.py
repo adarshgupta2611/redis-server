@@ -143,10 +143,9 @@ def rdb_get_command_helper(message_arr: List[str], n_args: int, client_socket: s
 def info_command_helper(message_arr: List[str], n_args: int, client_socket: socket):
     if message_arr[1].lower() == "replication":
         data = "role:master"
-        print(
-            f"Inside info_command_helper redis_utils.replicaof is {redis_utils.replicaof}"
-        )
         if redis_utils.replicaof:
             data = "role:slave"
+        data += "master_replid:8371b4fb1155b71f4a04d3e1bc3e18c4a990aeebmaster_repl_offset:0"
         resp_msg = redis_utils.convert_to_resp(data)
+        print(f"Resp Msg is {resp_msg}")
         client_socket.send(resp_msg.encode())
