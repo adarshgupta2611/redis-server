@@ -83,4 +83,11 @@ def choose_argument_and_send_output(
     elif message_arr[0].lower() == "replconf":
         client_socket.send("+OK\r\n".encode())
     elif message_arr[0].lower() == "psync":
-        client_socket.send(f"+FULLRESYNC 8371b4fb1155b71f4a04d3e1bc3e18c4a990aeeb 0\r\n".encode())
+        if message_arr[1]=='?' and message_arr[2]=='-1':
+            client_socket.send(
+                "+FULLRESYNC 8371b4fb1155b71f4a04d3e1bc3e18c4a990aeeb 0\r\n".encode()
+            )
+            rdb_hex = "524544495330303131fa0972656469732d76657205372e322e30fa0a72656469732d62697473c040fa056374696d65c26d08bc65fa08757365642d6d656dc2b0c41000fa08616f662d62617365c000fff06e3bfec0ff5aa2"
+            rdb_content = bytes.fromhex(rdb_hex)
+            rdb_length = f"${len(rdb_content)}\r\n".encode()
+            client_socket.send(rdb_length + rdb_content)
