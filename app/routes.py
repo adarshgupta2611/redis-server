@@ -82,3 +82,5 @@ def choose_argument_and_send_output(
         redis_commands.info_command_helper(message_arr, n_args, client_socket)
     elif message_arr[0].lower() == "replconf":
         client_socket.send("+OK\r\n".encode())
+    elif message_arr[0].lower() == "psync":
+        client_socket.send(f"+FULLRESYNC 8371b4fb1155b71f4a04d3e1bc3e18c4a990aeeb 0\r\n".encode())
