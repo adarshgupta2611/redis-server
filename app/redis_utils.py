@@ -2,7 +2,6 @@ import argparse
 import os
 import socket
 from typing import List, Dict
-import struct
 
 redis_dict = {}
 dir = ""
@@ -59,8 +58,14 @@ def redis_args_parse():
 
 
 def parse_rdb() -> dict[bytes, tuple[bytes, int | None]]:
+    """
+    Parses a Redis RDB file and returns a dictionary of keys and values
+
+    Returns:
+        dict[bytes, tuple[bytes, int | None]]: _description_
+    """
     store: dict[bytes, tuple[bytes, int | None]] = {}
-    db_path = dir + "/" + dbfilename
+    db_path: str = dir + "/" + dbfilename
     try:
         with open(db_path, mode="rb") as db:
             data = db.read()
@@ -152,5 +157,6 @@ def perform_handshake(host: str, master_port: int):
     master_socket.send(resp2.encode())
     recieved_msg1 = master_socket.recv(1024).decode()
     recieved_msg2 = master_socket.recv(1024).decode()
+    master_socket.send("*3\r\n$5\r\nPSYNC\r\n$1\r\n?\r\n$2\r\n-1\r\n".encode())
     
     
