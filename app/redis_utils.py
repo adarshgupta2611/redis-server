@@ -8,6 +8,7 @@ dir = ""
 dbfilename = ""
 port: int = 6379
 replicaof = ""
+replica_sockets = []
 
 
 def convert_to_resp(msg: str) -> str:

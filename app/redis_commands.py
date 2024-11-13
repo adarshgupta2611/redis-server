@@ -33,7 +33,11 @@ def set_command_helper(message_arr: List[str], n_args: int, client_socket: socke
             )
         else:
             redis_utils.redis_dict.update({message_arr[1]: message_arr[2]})
-
+        for socket in redis_utils.replica_sockets:
+            msg : str = " ".join(message_arr)
+            resp_msg =redis_utils.convert_to_resp(msg)
+            
+            socket.send(resp_msg.encode()) 
         client_socket.send(b"+OK\r\n")
     else:
         client_socket.send(b"-ERR wrong number of arguments for 'SET'\r\n")

@@ -84,6 +84,7 @@ def choose_argument_and_send_output(
         client_socket.send("+OK\r\n".encode())
     elif message_arr[0].lower() == "psync":
         if message_arr[1]=='?' and message_arr[2]=='-1':
+            
             client_socket.send(
                 "+FULLRESYNC 8371b4fb1155b71f4a04d3e1bc3e18c4a990aeeb 0\r\n".encode()
             )
@@ -91,3 +92,4 @@ def choose_argument_and_send_output(
             rdb_content = bytes.fromhex(rdb_hex)
             rdb_length = f"${len(rdb_content)}\r\n".encode()
             client_socket.send(rdb_length + rdb_content)
+            redis_utils.replica_sockets.append(client_socket)
