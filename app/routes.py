@@ -80,3 +80,5 @@ def choose_argument_and_send_output(
         redis_commands.keys_get_command_helper(message_arr, n_args, client_socket)
     elif message_arr[0].lower() == "info":
         redis_commands.info_command_helper(message_arr, n_args, client_socket)
+    elif message_arr[0].lower() == "replconf":
+        client_socket.send("+OK\r\n".encode())

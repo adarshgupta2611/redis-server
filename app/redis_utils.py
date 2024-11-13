@@ -145,7 +145,7 @@ def parse_keyvalue(data: bytes, pos: int) -> tuple[bytes, bytes, int]:
     return (key, val, pos)
 
 
-def perform_handshake(host: str, master_port: int):
+def perform_handshake_with_master(host: str, master_port: int):
     master_socket = socket.create_connection((host, master_port))
     master_socket.send(str.encode("*1\r\n$4\r\nping\r\n"))
     recieved_msg = master_socket.recv(1024).decode()
