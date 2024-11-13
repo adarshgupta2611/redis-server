@@ -6,7 +6,7 @@ from .redis_utils import convert_to_resp
 from app import redis_utils
 
 
-def set_command_helper(message_arr: List[str], n_args: int, client_socket: socket):
+def set_command_helper(message_arr: List[str], n_args: int, client_socket: socket, from_master : bool = False):
     """
     Handles the SET command and sets the key-value pair in the Redis dictionary.
     If a time-to-live (TTL) is provided, the key-value pair will expire after the specified time.
@@ -20,6 +20,8 @@ def set_command_helper(message_arr: List[str], n_args: int, client_socket: socke
         n_args (int): _description_
         client_socket (socket): _description_
     """
+    print(f"Inside set_command_helper from_master value is {from_master}")
+    
     if n_args >= 3:
         index_px = next(
             (i for i, item in enumerate(message_arr) if item.lower() == "px"), -1
@@ -38,7 +40,8 @@ def set_command_helper(message_arr: List[str], n_args: int, client_socket: socke
             resp_msg =redis_utils.convert_to_resp(msg)
             
             socket.send(resp_msg.encode()) 
-        client_socket.send(b"+OK\r\n")
+        if not from_master:
+            client_socket.send(b"+OK\r\n")
     else:
         client_socket.send(b"-ERR wrong number of arguments for 'SET'\r\n")
 
