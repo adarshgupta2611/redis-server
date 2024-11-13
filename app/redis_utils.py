@@ -140,6 +140,17 @@ def parse_keyvalue(data: bytes, pos: int) -> tuple[bytes, bytes, int]:
     return (key, val, pos)
 
 
-def perform_handshake(host: str, port: int):
-    master_socket = socket.create_connection((host, port))
+def perform_handshake(host: str, master_port: int):
+    master_socket = socket.create_connection((host, master_port))
     master_socket.send(str.encode("*1\r\n$4\r\nping\r\n"))
+    recieved_msg = master_socket.recv(1024).decode()
+    msg1 = f"REPLCONF listening-port {port}"
+    msg2 = f"REPLCONF capa psync2"
+    resp1 = convert_to_resp(msg1)
+    resp2 = convert_to_resp(msg2)
+    master_socket.send(resp1.encode())
+    master_socket.send(resp2.encode())
+    recieved_msg1 = master_socket.recv(1024).decode()
+    recieved_msg2 = master_socket.recv(1024).decode()
+    
+    
