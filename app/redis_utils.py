@@ -7,9 +7,10 @@ dbfilename = ""
 port: int = 6379
 replicaof = ""
 replica_sockets = []
+replica_ack_offset = 0
 
 
-def convert_to_resp(msg: str) -> str:
+def convert_to_resp(msg: str, is_arr: bool = False) -> str:
     """
     Converts a string to RESP (Redis Protocol) format
 
@@ -24,6 +25,8 @@ def convert_to_resp(msg: str) -> str:
     """
     msg_arr: List[str] = msg.split(" ")
     resp: str = f"*{len(msg_arr)}\r\n" if len(msg_arr) > 1 else ""
+    if resp=="" and is_arr:
+        resp = "*1\r\n"
     for s in msg_arr:
         if s:
             resp += f"${len(s)}\r\n{s}\r\n"

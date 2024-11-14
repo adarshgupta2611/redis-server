@@ -74,11 +74,12 @@ def client_loop(conn: socket.socket, from_master: bool = False, prev_buf: bytes 
                 if cmd_str[0].lower() == "set":
                     redis_commands.set_command_helper(cmd_str, len(cmd), conn , True)
                 elif cmd_str[0].lower() == "replconf" and cmd_str[1].lower() == "getack":
-                    msg = "REPLCONF ACK 0"
+                    msg = f"REPLCONF ACK {redis_utils.replica_ack_offset}"
                     resp_msg = redis_utils.convert_to_resp(msg)
-                    conn.send(resp_msg.encode())
-                # if not from_master:
-                #     conn.send(res)
+                    resp_msg_bytes = resp_msg.encode()
+                    conn.send(resp_msg_bytes)
+                    
+                redis_utils.replica_ack_offset = redis_utils.replica_ack_offset + len(redis_utils.convert_to_resp(" ".join(cmd_str),True).encode())
             except (ConnectionError, AssertionError):
                 break
     # if cctx.id in ctx.replicas:
