@@ -71,7 +71,12 @@ def client_loop(conn: socket.socket, from_master: bool = False, prev_buf: bytes 
                     cmd.append(token.data)
                 print(f"Got command: {cmd}")
                 cmd_str = [byte.decode('utf-8') for byte in cmd]
-                redis_commands.set_command_helper(cmd_str, len(cmd), conn , True)
+                if cmd_str[0].lower() == "set":
+                    redis_commands.set_command_helper(cmd_str, len(cmd), conn , True)
+                elif cmd_str[0].lower() == "replconf" and cmd_str[1].lower() == "getack":
+                    msg = "REPLCONF ACK 0"
+                    resp_msg = redis_utils.convert_to_resp(msg)
+                    conn.send(resp_msg.encode())
                 # if not from_master:
                 #     conn.send(res)
             except (ConnectionError, AssertionError):
