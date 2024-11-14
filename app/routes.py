@@ -1,5 +1,6 @@
 from dataclasses import dataclass
 import socket
+import time
 from typing import List, NamedTuple, Tuple
 from app import redis_commands
 from app import redis_utils
@@ -135,7 +136,7 @@ def accept_client_concurrently(client_socket: socket, addr: str):
                 break
             message: str = data.decode("utf-8")
             msg_arr, number_of_args = parse_message(message)
-            choose_argument_and_send_output(msg_arr, number_of_args, client_socket)
+            choose_argument_and_send_output(msg_arr, number_of_args, client_socket, addr)
     except Exception as e:
         print(f"Error occurred while handling client: {e}")
     finally:
@@ -164,7 +165,7 @@ def parse_message(message: str) -> Tuple[List[str], int]:
 
 
 def choose_argument_and_send_output(
-    message_arr: List[str], n_args: int, client_socket: socket
+    message_arr: List[str], n_args: int, client_socket: socket, addr: str
 ):
     """
     Chooses the appropriate argument and sends the output to the client based on the command
@@ -197,7 +198,10 @@ def choose_argument_and_send_output(
     elif message_arr[0].lower() == "info":
         redis_commands.info_command_helper(message_arr, n_args, client_socket)
     elif message_arr[0].lower() == "replconf":
-        client_socket.send("+OK\r\n".encode())
+        if message_arr[1].lower() == "listening-port" or message_arr[1].lower()=="capa":
+            client_socket.send("+OK\r\n".encode())
+        elif message_arr[1].lower()=="ack":
+            redis_utils.num_replicas_ack += 1
     elif message_arr[0].lower() == "psync":
         if message_arr[1] == "?" and message_arr[2] == "-1":
 
@@ -208,6 +212,7 @@ def choose_argument_and_send_output(
             rdb_content = bytes.fromhex(rdb_hex)
             rdb_length = f"${len(rdb_content)}\r\n".encode()
             client_socket.send(rdb_length + rdb_content)
-            redis_utils.replica_sockets.append(client_socket)
+            redis_utils.replica_sockets.update({addr:client_socket})
     elif message_arr[0].lower() == "wait":
-        client_socket.send(f":{len(redis_utils.replica_sockets)}\r\n".encode())
+        redis_commands.wait_command_helper(message_arr, n_args, client_socket)
+        

@@ -6,7 +6,9 @@ dir = ""
 dbfilename = ""
 port: int = 6379
 replicaof = ""
-replica_sockets = []
+replica_sockets = {}
+num_replicas_ack = 0
+num_write_operations = 0
 replica_ack_offset = 0
 
 
@@ -145,3 +147,9 @@ def parse_keyvalue(data: bytes, pos: int) -> tuple[bytes, bytes, int]:
     key, pos = parse_db_string(data, pos)
     val, pos = parse_db_string(data, pos)
     return (key, val, pos)
+
+def handle_num_replicas_ack():
+    global num_replicas_ack
+    num_replicas_ack += 1
+    
+    
