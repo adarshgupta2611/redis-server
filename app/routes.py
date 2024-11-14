@@ -210,4 +210,4 @@ def choose_argument_and_send_output(
             client_socket.send(rdb_length + rdb_content)
             redis_utils.replica_sockets.append(client_socket)
     elif message_arr[0].lower() == "wait":
-        client_socket.send(":0\r\n".encode())
+        client_socket.send(f":{len(redis_utils.replica_sockets)}\r\n".encode())
