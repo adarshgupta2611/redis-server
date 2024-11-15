@@ -147,9 +147,5 @@ def parse_keyvalue(data: bytes, pos: int) -> tuple[bytes, bytes, int]:
     key, pos = parse_db_string(data, pos)
     val, pos = parse_db_string(data, pos)
     return (key, val, pos)
-
-def handle_num_replicas_ack():
-    global num_replicas_ack
-    num_replicas_ack += 1
     
     

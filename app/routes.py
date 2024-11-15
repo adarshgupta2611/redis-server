@@ -215,4 +215,6 @@ def choose_argument_and_send_output(
             redis_utils.replica_sockets.update({addr:client_socket})
     elif message_arr[0].lower() == "wait":
         redis_commands.wait_command_helper(message_arr, n_args, client_socket)
+    elif message_arr[0].lower() == "type":
+        redis_commands.type_command_helper(message_arr, n_args, client_socket)
         

@@ -194,3 +194,15 @@ def wait_command_helper(message_arr: List[str], n_args: int, client_socket: sock
             ans = redis_utils.num_replicas_ack % len(redis_utils.replica_sockets)
         client_socket.send(f":{ans}\r\n".encode())
     redis_utils.num_replicas_ack = 0
+    
+def type_command_helper(message_arr: List[str], n_args: int, client_socket: socket):
+    key = message_arr[1]
+    value = redis_utils.redis_dict.get(key, None)
+    if value:
+        type_of_value = ""
+        if isinstance(value,str):
+            type_of_value = "string"
+        type_value_resp = redis_utils.convert_to_resp(type_of_value)
+        client_socket.send(type_value_resp.encode())
+    else:
+        client_socket.send("+none\r\n".encode())
