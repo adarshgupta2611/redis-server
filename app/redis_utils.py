@@ -2,6 +2,7 @@ import argparse
 from typing import List
 
 redis_dict = {}
+redis_streams_dict = {}
 dir = ""
 dbfilename = ""
 port: int = 6379

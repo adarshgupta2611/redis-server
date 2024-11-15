@@ -197,6 +197,9 @@ def wait_command_helper(message_arr: List[str], n_args: int, client_socket: sock
     
 def type_command_helper(message_arr: List[str], n_args: int, client_socket: socket):
     key = message_arr[1]
+    if redis_utils.redis_streams_dict.get(key):
+        client_socket.send("+stream\r\n".encode())
+        return
     value = redis_utils.redis_dict.get(key, None)
     if value:
         type_of_value = ""
@@ -206,3 +209,10 @@ def type_command_helper(message_arr: List[str], n_args: int, client_socket: sock
         client_socket.send(type_value_resp.encode())
     else:
         client_socket.send("+none\r\n".encode())
+        
+def xadd_command_helper(message_arr: List[str], n_args: int, client_socket: socket):
+    stream_key = message_arr[1]
+    stream_key_id = message_arr[2]
+    if stream_key_id:
+        redis_utils.redis_streams_dict.update({stream_key: {"id" : stream_key_id,message_arr[3]: message_arr[4]}})
+        client_socket.send(redis_utils.convert_to_resp(stream_key_id).encode())
