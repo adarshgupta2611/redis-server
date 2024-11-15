@@ -213,6 +213,26 @@ def type_command_helper(message_arr: List[str], n_args: int, client_socket: sock
 def xadd_command_helper(message_arr: List[str], n_args: int, client_socket: socket):
     stream_key = message_arr[1]
     stream_key_id = message_arr[2]
-    if stream_key_id:
+    stream_time, stream_seq_num = stream_key_id.split("-")
+    if stream_time=="0" and stream_seq_num=="0":
+        client_socket.send(b"-ERR The ID specified in XADD must be greater than 0-0\r\n")
+        return
+    if len(redis_utils.redis_streams_dict) == 0:
+        print("Inside length as zero")
+        redis_utils.redis_streams_dict.update({stream_key: {"id" : stream_key_id,message_arr[3]: message_arr[4]}})
+        client_socket.send(redis_utils.convert_to_resp(stream_key_id).encode())
+    else:
+        print("Inside length gt zero")
+        last_stream_id : str= list(redis_utils.redis_streams_dict.values())[-1]["id"]
+        last_stream_time, last_stream_seq_num = last_stream_id.split("-")
+        print(f"last_stream_time {last_stream_time} last_stream_seq_num {last_stream_seq_num}")
+        if int(stream_time)==int(last_stream_time):
+            if int(stream_seq_num) <= int(last_stream_seq_num):
+                client_socket.send(b"-ERR The ID specified in XADD is equal or smaller than the target stream top item\r\n")
+                return
+        elif int(stream_time)<int(last_stream_time):
+            client_socket.send(b"-ERR The ID specified in XADD is equal or smaller than the target stream top item\r\n")
+            return
+        
         redis_utils.redis_streams_dict.update({stream_key: {"id" : stream_key_id,message_arr[3]: message_arr[4]}})
         client_socket.send(redis_utils.convert_to_resp(stream_key_id).encode())
