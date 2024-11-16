@@ -335,11 +335,21 @@ def xadd_auto_gen_time_seqnum(message_arr: List[str], n_args: int, client_socket
 def xrange_command_helper(message_arr: List[str], n_args: int, client_socket: socket):
     stream_key = message_arr[1]
     from_id = message_arr[2]
-    from_stream_time, from_seq_num = redis_utils.find_time_and_seq(from_id)
     to_id = message_arr[3]
-    to_stream_time, to_seq_num = redis_utils.find_time_and_seq(to_id)
     stream_list = redis_utils.redis_streams_dict.get(stream_key, None)
     print(f"xrange_command_helper Stream List found is {stream_list}")
+    if from_id == "-":
+        to_stream_time, to_seq_num = redis_utils.find_time_and_seq(to_id)
+        xrange_start_command_helper(message_arr, n_args, client_socket, stream_list,to_stream_time,to_seq_num)
+    elif to_id == "+":
+        pass
+    else:
+        from_stream_time, from_seq_num = redis_utils.find_time_and_seq(from_id)
+        to_stream_time, to_seq_num = redis_utils.find_time_and_seq(to_id)
+        xrange_both_command_helper(message_arr, n_args, client_socket, stream_list, from_stream_time,from_seq_num,to_stream_time,to_seq_num)
+    
+            
+def xrange_both_command_helper(message_arr: List[str], n_args: int, client_socket: socket, stream_list, from_stream_time,from_seq_num,to_stream_time,to_seq_num):
     if stream_list:
         valid_list = []
         for item in stream_list:
@@ -354,7 +364,7 @@ def xrange_command_helper(message_arr: List[str], n_args: int, client_socket: so
                 if not from_seq_num or int(stream_seq_num)>=int(from_seq_num):
                     if int(stream_time) == int(to_stream_time):
                         if not to_seq_num or int(stream_seq_num)<=int(to_seq_num):
-                            print(f"Inside all condiftions for {item}")
+                            print(f"Inside all conditions for {item}")
                             valid_list.append(item)
             else:
                 print(f"Inside else for {item}")    
@@ -382,4 +392,44 @@ def xrange_command_helper(message_arr: List[str], n_args: int, client_socket: so
         
         print(f"Final Response is {response}")
         client_socket.send(response.encode())
+   
+        
+def xrange_start_command_helper(message_arr: List[str], n_args: int, client_socket: socket, stream_list,to_stream_time,to_seq_num):
+    if stream_list:
+        valid_list = []
+        for item in stream_list:
+            stream_id = item.get("id")
+            stream_time, stream_seq_num = stream_id.split("-")
+            if int(stream_time) > int(to_stream_time):
+                continue
             
+            if int(stream_time) == int(to_stream_time):
+                if not to_seq_num or int(stream_seq_num)<=int(to_seq_num):
+                    print(f"Inside all conditions for {item}")
+                    valid_list.append(item)
+            else:
+                print(f"Inside else for {item}")    
+                valid_list.append(item)
+        print(f"xrange_command_helper Valid List found is {valid_list}")
+        
+        response = f"*{len(valid_list)}\r\n"
+        print(f"response before {response}")
+        for valid_item in valid_list:
+            len_dict = len(valid_item) - 1
+            response += f"*{len_dict}\r\n"
+            print(f"response after len dict {response}")
+            print(f"Type of valid-item is {type(valid_item)}")
+            for key,value in valid_item.items():
+                if key == "id":
+                    print("inside key is id")
+                    response += redis_utils.convert_to_resp(valid_item.get("id"))
+                    print(f"response after id is {response}")
+                else:
+                    response += f"*{len_dict*2}\r\n"
+                    response += redis_utils.convert_to_resp(key)
+                    response += redis_utils.convert_to_resp(value)
+                    print(f"response after items is {response}")
+                    
+        
+        print(f"Final Response is {response}")
+        client_socket.send(response.encode())
