@@ -213,6 +213,10 @@ def type_command_helper(message_arr: List[str], n_args: int, client_socket: sock
 def xadd_command_helper(message_arr: List[str], n_args: int, client_socket: socket):
     stream_key = message_arr[1]
     stream_key_id = message_arr[2]
+    if stream_key_id == "*":
+        xadd_auto_gen_time_seqnum(message_arr, n_args, client_socket,stream_key, stream_key_id)
+        return
+    
     stream_time, stream_seq_num = stream_key_id.split("-")
     if stream_time=="0" and stream_seq_num=="0":
         client_socket.send(b"-ERR The ID specified in XADD must be greater than 0-0\r\n")
@@ -272,3 +276,24 @@ def xadd_default(message_arr: List[str], n_args: int, client_socket: socket, str
         
         redis_utils.redis_streams_dict.update({stream_key: {"id" : stream_key_id,message_arr[3]: message_arr[4]}})
         client_socket.send(redis_utils.convert_to_resp(stream_key_id).encode())
+
+def xadd_auto_gen_time_seqnum(message_arr: List[str], n_args: int, client_socket: socket, stream_key: str, stream_key_id: str):
+    time_now = int(time.time()*1000)
+    if len(redis_utils.redis_streams_dict) == 0:
+        new_stream_key_id = f"{time_now}-0"
+        redis_utils.redis_streams_dict.update({stream_key: {"id" : new_stream_key_id,message_arr[3]: message_arr[4]}})
+        client_socket.send(redis_utils.convert_to_resp(new_stream_key_id).encode())
+        return
+    else:
+        last_stream_id : str= list(redis_utils.redis_streams_dict.values())[-1]["id"]
+        last_stream_time, last_stream_seq_num = last_stream_id.split("-")
+        if int(time_now)==int(last_stream_time):
+            new_stream_key_id = f"{time_now}-{int(last_stream_seq_num) + 1}"
+            redis_utils.redis_streams_dict.update({stream_key: {"id" : new_stream_key_id,message_arr[3]: message_arr[4]}})
+            client_socket.send(redis_utils.convert_to_resp(new_stream_key_id).encode())
+            return
+        else:
+            new_stream_key_id = f"{time_now}-0"
+            redis_utils.redis_streams_dict.update({stream_key: {"id" : new_stream_key_id,message_arr[3]: message_arr[4]}})
+            client_socket.send(redis_utils.convert_to_resp(new_stream_key_id).encode())
+            return
