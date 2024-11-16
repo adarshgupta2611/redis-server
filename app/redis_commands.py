@@ -215,6 +215,7 @@ def xadd_command_helper(message_arr: List[str], n_args: int, client_socket: sock
     stream_key_id = message_arr[2]
     if stream_key_id == "*":
         xadd_auto_gen_time_seqnum(message_arr, n_args, client_socket,stream_key, stream_key_id)
+        print(f"Redis Stream is {redis_utils.redis_streams_dict}")
         return
     
     stream_time, stream_seq_num = stream_key_id.split("-")
@@ -224,9 +225,11 @@ def xadd_command_helper(message_arr: List[str], n_args: int, client_socket: sock
     
     if stream_seq_num=="*":
         xadd_auto_gen_seq_num(message_arr, n_args, client_socket,stream_key, stream_key_id, stream_time, stream_seq_num)
+        print(f"Redis Stream is {redis_utils.redis_streams_dict}")
         return
     else:
         xadd_default(message_arr, n_args, client_socket,stream_key, stream_key_id, stream_time, stream_seq_num)
+        print(f"Redis Stream is {redis_utils.redis_streams_dict}")
         return
         
     
@@ -235,25 +238,42 @@ def xadd_auto_gen_seq_num(message_arr: List[str], n_args: int, client_socket: so
     if len(redis_utils.redis_streams_dict) == 0:
         if stream_time == "0":
             new_stream_key_id = "0-1"
-            redis_utils.redis_streams_dict.update({stream_key: {"id" : new_stream_key_id,message_arr[3]: message_arr[4]}})
+            if redis_utils.redis_streams_dict.get(stream_key):
+                redis_utils.redis_streams_dict.get(stream_key).append({"id" : new_stream_key_id,message_arr[3]: message_arr[4]})
+            else:
+                redis_utils.redis_streams_dict.update({stream_key: [{"id" : new_stream_key_id,message_arr[3]: message_arr[4]}]})
             client_socket.send(redis_utils.convert_to_resp(new_stream_key_id).encode())
+            redis_utils.last_stream_id = stream_key_id
+            
         else:
             new_stream_key_id = f"{stream_time}-0"
-            redis_utils.redis_streams_dict.update({stream_key: {"id" : new_stream_key_id,message_arr[3]: message_arr[4]}})
+            if redis_utils.redis_streams_dict.get(stream_key):
+                redis_utils.redis_streams_dict.get(stream_key).append({"id" : new_stream_key_id,message_arr[3]: message_arr[4]})
+            else:
+                redis_utils.redis_streams_dict.update({stream_key: [{"id" : new_stream_key_id,message_arr[3]: message_arr[4]}]})
+            redis_utils.last_stream_id = new_stream_key_id
             client_socket.send(redis_utils.convert_to_resp(new_stream_key_id).encode())
         return
     else:
-        last_stream_id : str= list(redis_utils.redis_streams_dict.values())[-1]["id"]
+        last_stream_id : str= redis_utils.last_stream_id
         last_stream_time, last_stream_seq_num = last_stream_id.split("-")
         if int(stream_time)==int(last_stream_time):
             new_stream_key_id = f"{stream_time}-{int(last_stream_seq_num)+1}"
-            redis_utils.redis_streams_dict.update({stream_key: {"id" : new_stream_key_id,message_arr[3]: message_arr[4]}})
+            if redis_utils.redis_streams_dict.get(stream_key):
+                redis_utils.redis_streams_dict.get(stream_key).append({"id" : new_stream_key_id,message_arr[3]: message_arr[4]})
+            else:
+                redis_utils.redis_streams_dict.update({stream_key: [{"id" : new_stream_key_id,message_arr[3]: message_arr[4]}]})
+            redis_utils.last_stream_id = new_stream_key_id
             client_socket.send(redis_utils.convert_to_resp(new_stream_key_id).encode())
         elif int(stream_time)<int(last_stream_time):
             client_socket.send(b"-ERR The ID specified in XADD is equal or smaller than the target stream top item\r\n")
         else:
             new_stream_key_id = f"{stream_time}-0"
-            redis_utils.redis_streams_dict.update({stream_key: {"id" : new_stream_key_id,message_arr[3]: message_arr[4]}})
+            if redis_utils.redis_streams_dict.get(stream_key):
+                redis_utils.redis_streams_dict.get(stream_key).append({"id" : new_stream_key_id,message_arr[3]: message_arr[4]})
+            else:
+                redis_utils.redis_streams_dict.update({stream_key: [{"id" : new_stream_key_id,message_arr[3]: message_arr[4]}]})
+            redis_utils.last_stream_id = new_stream_key_id
             client_socket.send(redis_utils.convert_to_resp(new_stream_key_id).encode())
             
         
@@ -261,10 +281,11 @@ def xadd_auto_gen_seq_num(message_arr: List[str], n_args: int, client_socket: so
 
 def xadd_default(message_arr: List[str], n_args: int, client_socket: socket, stream_key: str, stream_key_id: str, stream_time: str, stream_seq_num: str):
     if len(redis_utils.redis_streams_dict) == 0:
-        redis_utils.redis_streams_dict.update({stream_key: {"id" : stream_key_id,message_arr[3]: message_arr[4]}})
+        redis_utils.redis_streams_dict.update({stream_key: [{"id" : stream_key_id,message_arr[3]: message_arr[4]}]})
         client_socket.send(redis_utils.convert_to_resp(stream_key_id).encode())
+        redis_utils.last_stream_id = stream_key_id
     else:
-        last_stream_id : str= list(redis_utils.redis_streams_dict.values())[-1]["id"]
+        last_stream_id : str= redis_utils.last_stream_id
         last_stream_time, last_stream_seq_num = last_stream_id.split("-")
         if int(stream_time)==int(last_stream_time):
             if int(stream_seq_num) <= int(last_stream_seq_num):
@@ -274,26 +295,91 @@ def xadd_default(message_arr: List[str], n_args: int, client_socket: socket, str
             client_socket.send(b"-ERR The ID specified in XADD is equal or smaller than the target stream top item\r\n")
             return
         
-        redis_utils.redis_streams_dict.update({stream_key: {"id" : stream_key_id,message_arr[3]: message_arr[4]}})
+        if redis_utils.redis_streams_dict.get(stream_key):
+            redis_utils.redis_streams_dict.get(stream_key).append({"id" : stream_key_id,message_arr[3]: message_arr[4]})
+        else:
+            redis_utils.redis_streams_dict.update({stream_key: [{"id" : stream_key_id,message_arr[3]: message_arr[4]}]})
         client_socket.send(redis_utils.convert_to_resp(stream_key_id).encode())
+        redis_utils.last_stream_id = stream_key_id
 
 def xadd_auto_gen_time_seqnum(message_arr: List[str], n_args: int, client_socket: socket, stream_key: str, stream_key_id: str):
     time_now = int(time.time()*1000)
     if len(redis_utils.redis_streams_dict) == 0:
         new_stream_key_id = f"{time_now}-0"
-        redis_utils.redis_streams_dict.update({stream_key: {"id" : new_stream_key_id,message_arr[3]: message_arr[4]}})
+        redis_utils.redis_streams_dict.update({stream_key: [{"id" : new_stream_key_id,message_arr[3]: message_arr[4]}]})
         client_socket.send(redis_utils.convert_to_resp(new_stream_key_id).encode())
+        redis_utils.last_stream_id = new_stream_key_id
         return
     else:
-        last_stream_id : str= list(redis_utils.redis_streams_dict.values())[-1]["id"]
+        last_stream_id : str = redis_utils.last_stream_id
         last_stream_time, last_stream_seq_num = last_stream_id.split("-")
         if int(time_now)==int(last_stream_time):
             new_stream_key_id = f"{time_now}-{int(last_stream_seq_num) + 1}"
-            redis_utils.redis_streams_dict.update({stream_key: {"id" : new_stream_key_id,message_arr[3]: message_arr[4]}})
+            if redis_utils.redis_streams_dict.get(stream_key):
+                redis_utils.redis_streams_dict.get(stream_key).append({"id" : new_stream_key_id,message_arr[3]: message_arr[4]})
+            else:
+                redis_utils.redis_streams_dict.update({stream_key: [{"id" : new_stream_key_id,message_arr[3]: message_arr[4]}]})
             client_socket.send(redis_utils.convert_to_resp(new_stream_key_id).encode())
+            redis_utils.last_stream_id = new_stream_key_id
             return
         else:
             new_stream_key_id = f"{time_now}-0"
-            redis_utils.redis_streams_dict.update({stream_key: {"id" : new_stream_key_id,message_arr[3]: message_arr[4]}})
+            if redis_utils.redis_streams_dict.get(stream_key):
+                redis_utils.redis_streams_dict.get(stream_key).append({"id" : new_stream_key_id,message_arr[3]: message_arr[4]})
+            else:
+                redis_utils.redis_streams_dict.update({stream_key: [{"id" : new_stream_key_id,message_arr[3]: message_arr[4]}]})
             client_socket.send(redis_utils.convert_to_resp(new_stream_key_id).encode())
+            redis_utils.last_stream_id = new_stream_key_id
             return
+        
+def xrange_command_helper(message_arr: List[str], n_args: int, client_socket: socket):
+    stream_key = message_arr[1]
+    from_id = message_arr[2]
+    from_stream_time, from_seq_num = redis_utils.find_time_and_seq(from_id)
+    to_id = message_arr[3]
+    to_stream_time, to_seq_num = redis_utils.find_time_and_seq(to_id)
+    stream_list = redis_utils.redis_streams_dict.get(stream_key, None)
+    print(f"xrange_command_helper Stream List found is {stream_list}")
+    if stream_list:
+        valid_list = []
+        for item in stream_list:
+            stream_id = item.get("id")
+            stream_time, stream_seq_num = stream_id.split("-")
+            print(f"from_stream_time {from_stream_time} from_seq_num {from_seq_num} stream_time {stream_time} stream_seq_num {stream_seq_num} to_stream_time {to_stream_time} to_seq_num {to_seq_num}")
+            if int(stream_time) < int(from_stream_time) or int(stream_time) > int(to_stream_time):
+                print(f"inside continue for {item}")
+                continue
+            
+            if int(stream_time) == int(from_stream_time):
+                if not from_seq_num or int(stream_seq_num)>=int(from_seq_num):
+                    if int(stream_time) == int(to_stream_time):
+                        if not to_seq_num or int(stream_seq_num)<=int(to_seq_num):
+                            print(f"Inside all condiftions for {item}")
+                            valid_list.append(item)
+            else:
+                print(f"Inside else for {item}")    
+                valid_list.append(item)
+        print(f"xrange_command_helper Valid List found is {valid_list}")
+        
+        response = f"*{len(valid_list)}\r\n"
+        print(f"response before {response}")
+        for valid_item in valid_list:
+            len_dict = len(valid_item) - 1
+            response += f"*{len_dict}\r\n"
+            print(f"response after len dict {response}")
+            print(f"Type of valid-item is {type(valid_item)}")
+            for key,value in valid_item.items():
+                if key == "id":
+                    print("inside key is id")
+                    response += redis_utils.convert_to_resp(valid_item.get("id"))
+                    print(f"response after id is {response}")
+                else:
+                    response += f"*{len_dict*2}\r\n"
+                    response += redis_utils.convert_to_resp(key)
+                    response += redis_utils.convert_to_resp(value)
+                    print(f"response after items is {response}")
+                    
+        
+        print(f"Final Response is {response}")
+        client_socket.send(response.encode())
+            

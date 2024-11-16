@@ -3,6 +3,7 @@ from typing import List
 
 redis_dict = {}
 redis_streams_dict = {}
+last_stream_id = ""
 dir = ""
 dbfilename = ""
 port: int = 6379
@@ -148,5 +149,11 @@ def parse_keyvalue(data: bytes, pos: int) -> tuple[bytes, bytes, int]:
     key, pos = parse_db_string(data, pos)
     val, pos = parse_db_string(data, pos)
     return (key, val, pos)
-    
+
+def find_time_and_seq(stream_id : str):
+    stream_list = stream_id.split("-")
+    if len(stream_list) == 2:
+        return (stream_list[0], stream_list[1])
+    else:
+        return (stream_list[0], None)
     
