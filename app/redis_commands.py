@@ -212,7 +212,8 @@ def xadd_command_helper(message_arr: List[str], n_args: int, client_socket: sock
     if stream_key_id == "*":
         xadd_auto_gen_time_seqnum(message_arr, n_args, client_socket,stream_key, stream_key_id)
         return
-    
+    if redis_utils.wait_until_new_add_stream:
+        redis_utils.wait_until_new_add_stream = False
     stream_time, stream_seq_num = stream_key_id.split("-")
     if stream_time=="0" and stream_seq_num=="0":
         client_socket.send(b"-ERR The ID specified in XADD must be greater than 0-0\r\n")
@@ -224,6 +225,7 @@ def xadd_command_helper(message_arr: List[str], n_args: int, client_socket: sock
     else:
         xadd_default(message_arr, n_args, client_socket,stream_key, stream_key_id, stream_time, stream_seq_num)
         return
+    
         
     
         

@@ -225,8 +225,13 @@ def choose_argument_and_send_output(
     elif message_arr[0].lower() == "xread":
         if message_arr[1].lower()=="block":
             block_time = float(message_arr[2]) / 1000
-            time.sleep(block_time)
-            redis_utils.can_add_redis_stream = False
+            if block_time==0:
+                redis_utils.wait_until_new_add_stream = True
+                while redis_utils.wait_until_new_add_stream:
+                    pass
+            else:    
+                time.sleep(block_time)
+                redis_utils.can_add_redis_stream = False
             del message_arr[1:3]
         new_redis_streams_dict = copy.deepcopy(redis_utils.redis_streams_dict)
         print(f"new_redis_streams_dict is {new_redis_streams_dict}")
