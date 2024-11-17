@@ -474,3 +474,33 @@ def xrange_end_command_helper(message_arr: List[str], n_args: int, client_socket
         
         print(f"Final Response is {response}")
         client_socket.send(response.encode())
+
+def xread_command_helper(message_arr: List[str], n_args: int, client_socket: socket):
+    if message_arr[1].lower() == "streams": 
+        len_of_keys = int((len(message_arr) - 2) / 2)
+        print(f"len of keys is {len_of_keys}")
+        keys_list = message_arr[2:2+len_of_keys]
+        from_id_list = message_arr[2+len_of_keys:]
+        print(f"Keys_list is {keys_list} and id_list is {from_id_list}")
+        stream_list_with_key = []
+        for idx,key in enumerate(keys_list):
+            from_time,from_seq = redis_utils.find_time_and_seq(from_id_list[idx])
+            list_values = redis_utils.redis_streams_dict.get(key)
+            valid_values = []
+            for item in list_values:
+                stream_id = item["id"]
+                stream_time, stream_seq_num = redis_utils.find_time_and_seq(stream_id)
+                if int(stream_time) < int(from_time):
+                    continue
+                elif int(stream_time) == int(from_time):
+                    if not from_seq or int(stream_seq_num)>int(from_seq):
+                        valid_values.append(item)
+                else:
+                    valid_values.append(item)
+            stream_list_with_key.append((key,valid_values))
+                    
+                        
+                
+        print(f"stream_list_with_key is {stream_list_with_key}")
+        response = redis_utils.convert_xread_streams_to_resp(stream_list_with_key)
+        client_socket.send(response.encode())

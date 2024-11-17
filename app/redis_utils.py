@@ -29,7 +29,7 @@ def convert_to_resp(msg: str, is_arr: bool = False) -> str:
     """
     msg_arr: List[str] = msg.split(" ")
     resp: str = f"*{len(msg_arr)}\r\n" if len(msg_arr) > 1 else ""
-    if resp=="" and is_arr:
+    if resp == "" and is_arr:
         resp = "*1\r\n"
     for s in msg_arr:
         if s:
@@ -150,10 +150,36 @@ def parse_keyvalue(data: bytes, pos: int) -> tuple[bytes, bytes, int]:
     val, pos = parse_db_string(data, pos)
     return (key, val, pos)
 
-def find_time_and_seq(stream_id : str):
+
+def find_time_and_seq(stream_id: str):
     stream_list = stream_id.split("-")
     if len(stream_list) == 2:
         return (stream_list[0], stream_list[1])
     else:
         return (stream_list[0], None)
-    
+
+
+def convert_xread_streams_to_resp(stream_list_with_key : List[tuple]) -> str:
+    response = f"*{len(stream_list_with_key)}\r\n"
+    if stream_list_with_key:
+        for key, valid_values in stream_list_with_key:
+            response += "*2\r\n"
+            response += convert_to_resp(key)
+            response += "*1\r\n"
+            for list_item in valid_values:
+                temp_str = ""
+                for k,v in list_item.items():
+                    if k.lower()=="id":
+                        response += "*2\r\n"
+                        response += convert_to_resp(v)
+                        # len_of_items = len(valid_values) - 1
+                        # response += f"*{len_of_items}\r\n"
+                    else:
+                        temp_str += f"{k} {v} "
+                temp_str = temp_str.strip()
+                print(f"temp_str is {temp_str}")
+                response += convert_to_resp(temp_str)
+                    
+        
+    print(f"Final Response is {response}")
+    return response

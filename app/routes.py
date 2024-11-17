@@ -221,3 +221,5 @@ def choose_argument_and_send_output(
         redis_commands.xadd_command_helper(message_arr, n_args, client_socket)
     elif message_arr[0].lower() == "xrange":
         redis_commands.xrange_command_helper(message_arr, n_args, client_socket)    
+    elif message_arr[0].lower() == "xread":
+        redis_commands.xread_command_helper(message_arr, n_args, client_socket)    
