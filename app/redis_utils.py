@@ -161,6 +161,7 @@ def find_time_and_seq(stream_id: str):
 
 def convert_xread_streams_to_resp(stream_list_with_key : List[tuple]) -> str:
     response = f"*{len(stream_list_with_key)}\r\n"
+    print(f'Response start {response}')
     if stream_list_with_key:
         for key, valid_values in stream_list_with_key:
             response += "*2\r\n"

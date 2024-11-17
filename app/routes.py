@@ -223,17 +223,35 @@ def choose_argument_and_send_output(
     elif message_arr[0].lower() == "xrange":
         redis_commands.xrange_command_helper(message_arr, n_args, client_socket)    
     elif message_arr[0].lower() == "xread":
+        print(f"Inside xread for msg_arr is {message_arr}")
+        prev_copy_redis_streams_dict = copy.deepcopy(redis_utils.redis_streams_dict)
         if message_arr[1].lower()=="block":
             block_time = float(message_arr[2]) / 1000
             if block_time==0:
                 redis_utils.wait_until_new_add_stream = True
                 while redis_utils.wait_until_new_add_stream:
-                    pass
+                    print(f"In blocked value for msg_ar {message_arr}")
+                    time.sleep(0.1)
+                print(f"Exited sleep time for msg_ar {message_arr}")
             else:    
                 time.sleep(block_time)
                 redis_utils.can_add_redis_stream = False
             del message_arr[1:3]
-        new_redis_streams_dict = copy.deepcopy(redis_utils.redis_streams_dict)
-        print(f"new_redis_streams_dict is {new_redis_streams_dict}")
+        new_copy_redis_streams_dict = copy.deepcopy(redis_utils.redis_streams_dict)
+        print(f"prev_copy_redis_streams_dict is {prev_copy_redis_streams_dict} for msg_arr {message_arr}")
+        print(f"new_redis_streams_dict is {new_copy_redis_streams_dict} for msg_ar {message_arr} ")
+        if message_arr[-1] == "$":
+            print(f"Inside $ for message_ar is {message_arr}")
+            if prev_copy_redis_streams_dict==new_copy_redis_streams_dict:
+                client_socket.send("$-1\r\n".encode())
+                return
+            else:
+                list1 = prev_copy_redis_streams_dict.get(message_arr[2])
+                list2 = new_copy_redis_streams_dict.get(message_arr[2])
+                
+                diff2 = [item for item in list2 if item not in list1]
+                print(f"Diff2 is {diff2}")
+                redis_commands.xread_command_helper(message_arr, n_args, client_socket,new_copy_redis_streams_dict,diff2)
+                return
         print(f"message_arr is {message_arr}")
-        redis_commands.xread_command_helper(message_arr, n_args, client_socket,new_redis_streams_dict)    
+        redis_commands.xread_command_helper(message_arr, n_args, client_socket,new_copy_redis_streams_dict)    

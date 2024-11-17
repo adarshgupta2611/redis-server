@@ -213,6 +213,7 @@ def xadd_command_helper(message_arr: List[str], n_args: int, client_socket: sock
         xadd_auto_gen_time_seqnum(message_arr, n_args, client_socket,stream_key, stream_key_id)
         return
     if redis_utils.wait_until_new_add_stream:
+        print(f"Setting wait_until_new_add_stream as false for {message_arr}")
         redis_utils.wait_until_new_add_stream = False
     stream_time, stream_seq_num = stream_key_id.split("-")
     if stream_time=="0" and stream_seq_num=="0":
@@ -437,8 +438,17 @@ def xrange_end_command_helper(message_arr: List[str], n_args: int, client_socket
         
         client_socket.send(response.encode())
 
-def xread_command_helper(message_arr: List[str], n_args: int, client_socket: socket, redis_streams_dict):
-    if message_arr[1].lower() == "streams": 
+def xread_command_helper(message_arr: List[str], n_args: int, client_socket: socket, redis_streams_dict, only_new_values=None):
+    if message_arr[1].lower() == "streams":
+        if only_new_values==[]:
+            client_socket.send("$-1\r\n".encode())
+            return 
+        if only_new_values:
+            stream_list_with_key = [(message_arr[2],only_new_values)]
+            print(f"stream_list_with_key {stream_list_with_key}")            
+            response = redis_utils.convert_xread_streams_to_resp(stream_list_with_key)
+            client_socket.send(response.encode())
+            return
         len_of_keys = int((len(message_arr) - 2) / 2)
         keys_list = message_arr[2:2+len_of_keys]
         from_id_list = message_arr[2+len_of_keys:]
