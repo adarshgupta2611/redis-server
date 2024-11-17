@@ -1,3 +1,4 @@
+import copy
 from dataclasses import dataclass
 import socket
 import time
@@ -222,4 +223,12 @@ def choose_argument_and_send_output(
     elif message_arr[0].lower() == "xrange":
         redis_commands.xrange_command_helper(message_arr, n_args, client_socket)    
     elif message_arr[0].lower() == "xread":
-        redis_commands.xread_command_helper(message_arr, n_args, client_socket)    
+        if message_arr[1].lower()=="block":
+            block_time = float(message_arr[2]) / 1000
+            time.sleep(block_time)
+            redis_utils.can_add_redis_stream = False
+            del message_arr[1:3]
+        new_redis_streams_dict = copy.deepcopy(redis_utils.redis_streams_dict)
+        print(f"new_redis_streams_dict is {new_redis_streams_dict}")
+        print(f"message_arr is {message_arr}")
+        redis_commands.xread_command_helper(message_arr, n_args, client_socket,new_redis_streams_dict)    

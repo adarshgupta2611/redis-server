@@ -172,14 +172,10 @@ def convert_xread_streams_to_resp(stream_list_with_key : List[tuple]) -> str:
                     if k.lower()=="id":
                         response += "*2\r\n"
                         response += convert_to_resp(v)
-                        # len_of_items = len(valid_values) - 1
-                        # response += f"*{len_of_items}\r\n"
                     else:
                         temp_str += f"{k} {v} "
                 temp_str = temp_str.strip()
-                print(f"temp_str is {temp_str}")
                 response += convert_to_resp(temp_str)
                     
         
-    print(f"Final Response is {response}")
     return response
