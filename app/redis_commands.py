@@ -515,8 +515,10 @@ def incr_command_helper(message_arr: List[str], n_args: int, client_socket: sock
             value_int = int(value) + 1
             redis_utils.redis_dict.update({key : str(value_int)})
             client_socket.send(f":{value_int}\r\n".encode())
+        except ValueError as e:
+            client_socket.send("-ERR value is not an integer or out of range\r\n".encode())
         except Exception as e:
-            print(f"Couldnt change it to type int,Error: {e}")
+            print(f"Exception found : {e}")
     else:
         redis_utils.redis_dict.update({key : "1"})
         client_socket.send(":1\r\n".encode())
