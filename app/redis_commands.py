@@ -478,3 +478,46 @@ def xread_command_helper(message_arr: List[str], n_args: int, client_socket: soc
                 
         response = redis_utils.convert_xread_streams_to_resp(stream_list_with_key)
         client_socket.send(response.encode())
+        
+def handle_blocking_in_xread(message_arr: List[str]):
+    if message_arr[1].lower()=="block":
+        block_time = float(message_arr[2]) / 1000
+        if block_time==0:
+            redis_utils.wait_until_new_add_stream = True
+            while redis_utils.wait_until_new_add_stream:
+                print(f"In blocked value for msg_ar {message_arr}")
+                time.sleep(0.1)
+            print(f"Exited sleep time for msg_ar {message_arr}")
+        else:    
+            time.sleep(block_time)
+            redis_utils.can_add_redis_stream = False
+        del message_arr[1:3]
+        
+def handle_dollar_in_xread(client_socket,n_args,message_arr: List[str], prev_copy_redis_streams_dict, new_copy_redis_streams_dict):
+    if message_arr[-1] == "$":
+        if prev_copy_redis_streams_dict==new_copy_redis_streams_dict:
+            client_socket.send("$-1\r\n".encode())
+            return
+        else:
+            list1 = prev_copy_redis_streams_dict.get(message_arr[2])
+            list2 = new_copy_redis_streams_dict.get(message_arr[2])
+            
+            diff2 = [item for item in list2 if item not in list1]
+            print(f"Diff2 is {diff2}")
+            xread_command_helper(message_arr, n_args, client_socket,new_copy_redis_streams_dict,diff2)
+            return
+        
+def incr_command_helper(message_arr: List[str], n_args: int, client_socket: socket):
+    key = message_arr[1]
+    value = redis_utils.redis_dict.get(key, None)
+    if value:
+        try:
+            value_int = int(value) + 1
+            redis_utils.redis_dict.update({key : str(value_int)})
+            client_socket.send(f":{value_int}\r\n".encode())
+        except Exception as e:
+            print(f"Couldnt change it to type int,Error: {e}")
+    else:
+        message_arr[0] = "SET"
+        message_arr[2] = "1"
+        set_command_helper(message_arr, n_args, client_socket)
