@@ -533,4 +533,9 @@ def multi_command_helper(message_arr: List[str], n_args: int, client_socket: soc
         msg_arr: List[str] = message.split("\r\n")
         msg_arr.remove(msg_arr[0])
         args_arr = msg_arr[::2]
+        if args_arr[0].lower()=="exec" and len(redis_utils.multi_queue_commands)==0:
+            client_socket.send("*0\r\n".encode())
+            return
+        
         redis_utils.multi_queue_commands.append(args_arr)
+        client_socket.send("QUEUED\r\n".encode())

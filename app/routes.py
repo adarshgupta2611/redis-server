@@ -229,5 +229,7 @@ def choose_argument_and_send_output(
         redis_commands.incr_command_helper(message_arr, n_args, client_socket)
     elif message_arr[0].lower() == "multi":
         redis_commands.multi_command_helper(message_arr, n_args, client_socket)
+    elif message_arr[0].lower() == "exec":
+        client_socket.send("-ERR EXEC without MULTI\r\n".encode())
         
     
