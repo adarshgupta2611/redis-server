@@ -13,6 +13,7 @@ num_replicas_ack = 0
 num_write_operations = 0
 replica_ack_offset = 0
 wait_until_new_add_stream = False
+multi_queue_commands = []
 
 def convert_to_resp(msg: str, is_arr: bool = False) -> str:
     """

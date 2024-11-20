@@ -84,9 +84,6 @@ def client_loop(conn: socket.socket, from_master: bool = False, prev_buf: bytes 
                 redis_utils.replica_ack_offset = redis_utils.replica_ack_offset + len(redis_utils.convert_to_resp(" ".join(cmd_str),True).encode())
             except (ConnectionError, AssertionError):
                 break
-    # if cctx.id in ctx.replicas:
-    #     ctx.replicas[cctx.id].conn.close()
-    #     ctx.replicas.pop(cctx.id)
     print(f"Client loop stop {conn}")
 
 
@@ -230,5 +227,7 @@ def choose_argument_and_send_output(
         redis_commands.xread_command_helper(message_arr, n_args, client_socket,new_copy_redis_streams_dict)
     elif message_arr[0].lower() == "incr":
         redis_commands.incr_command_helper(message_arr, n_args, client_socket)
+    elif message_arr[0].lower() == "multi":
+        redis_commands.multi_command_helper(message_arr, n_args, client_socket)
         
     
