@@ -26,7 +26,7 @@ def set_command_helper(
         client_socket (socket): _description_
     """
    
-
+    print(f"In set_command_helper and message_arr is {message_arr}")
     if n_args >= 3:
         index_px = next(
             (i for i, item in enumerate(message_arr) if item.lower() == "px"), -1
@@ -518,6 +518,6 @@ def incr_command_helper(message_arr: List[str], n_args: int, client_socket: sock
         except Exception as e:
             print(f"Couldnt change it to type int,Error: {e}")
     else:
-        message_arr[0] = "SET"
-        message_arr[2] = "1"
-        set_command_helper(message_arr, n_args, client_socket)
+        redis_utils.redis_dict.update({key : "1"})
+        client_socket.send(":1\r\n".encode())
+        
