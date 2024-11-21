@@ -11,6 +11,7 @@ def set_command_helper(
     n_args: int,
     client_socket: socket,
     from_master: bool = False,
+    is_multi_command: bool = False
 ):
     """
     Handles the SET command and sets the key-value pair in the Redis dictionary.
@@ -46,6 +47,9 @@ def set_command_helper(
             resp_msg = redis_utils.convert_to_resp(msg)
 
             socket.send(resp_msg.encode())
+        if is_multi_command:
+            redis_utils.queue_commands_response.append("+OK\r\n")
+            return
         if not from_master:
             client_socket.send(b"+OK\r\n")
 
@@ -53,7 +57,7 @@ def set_command_helper(
         client_socket.send(b"-ERR wrong number of arguments for 'SET'\r\n")
 
 
-def get_command_helper(message_arr: List[str], n_args: int, client_socket: socket):
+def get_command_helper(message_arr: List[str], n_args: int, client_socket: socket, is_multi_command: bool = False):
     """
     Handles the GET command and retrieves the value associated with the given key from the Redis dictionary.
 
@@ -68,16 +72,28 @@ def get_command_helper(message_arr: List[str], n_args: int, client_socket: socke
     now = datetime.now()
     result = redis_utils.redis_dict.get(message_arr[1])
     if not result:
+        if is_multi_command:
+            redis_utils.queue_commands_response.append("$-1\r\n")
+            return
         client_socket.send(b"$-1\r\n")
     elif isinstance(result, str):
         resp = convert_to_resp(redis_utils.redis_dict.get(message_arr[1]))
+        if is_multi_command:
+            redis_utils.queue_commands_response.append(resp)
+            return
         client_socket.send(resp.encode())
     elif isinstance(result, Tuple):
         if result[1] < now:
             redis_utils.redis_dict.pop(message_arr[1])
+            if is_multi_command:
+                redis_utils.queue_commands_response.append("$-1\r\n")
+                return
             client_socket.send(b"$-1\r\n")
         else:
             resp = convert_to_resp(result[0])
+            if is_multi_command:
+                redis_utils.queue_commands_response.append(resp)
+                return
             client_socket.send(resp.encode())
 
 
@@ -507,13 +523,16 @@ def handle_dollar_in_xread(client_socket,n_args,message_arr: List[str], prev_cop
             xread_command_helper(message_arr, n_args, client_socket,new_copy_redis_streams_dict,diff2)
             return
         
-def incr_command_helper(message_arr: List[str], n_args: int, client_socket: socket):
+def incr_command_helper(message_arr: List[str], n_args: int, client_socket: socket, is_multi_command: bool = False):
     key = message_arr[1]
     value = redis_utils.redis_dict.get(key, None)
     if value:
         try:
             value_int = int(value) + 1
             redis_utils.redis_dict.update({key : str(value_int)})
+            if is_multi_command:
+                redis_utils.queue_commands_response.append(f":{value_int}\r\n")
+                return
             client_socket.send(f":{value_int}\r\n".encode())
         except ValueError as e:
             client_socket.send("-ERR value is not an integer or out of range\r\n".encode())
@@ -521,6 +540,9 @@ def incr_command_helper(message_arr: List[str], n_args: int, client_socket: sock
             print(f"Exception found : {e}")
     else:
         redis_utils.redis_dict.update({key : "1"})
+        if is_multi_command:
+            redis_utils.queue_commands_response.append(":1\r\n")
+            return
         client_socket.send(":1\r\n".encode())
         
 
