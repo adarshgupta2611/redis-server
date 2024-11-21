@@ -161,6 +161,27 @@ def parse_message(message: str) -> Tuple[List[str], int]:
     args_arr = msg_arr[::2]
     return (args_arr, number_of_args)
 
+def multi_command_helper(message_arr: List[str], n_args: int, client_socket: socket):
+    client_socket.send("+OK\r\n".encode())
+    while True:
+        data: bytes = client_socket.recv(1024)
+        if not data:
+            break
+        message: str = data.decode("utf-8")
+        msg_arr: List[str] = message.split("\r\n")
+        args_arr = msg_arr[::2]
+        args_arr.remove(args_arr[0])
+        print(f"args_arr is {args_arr}")
+        if args_arr[0].lower()=="exec" and len(redis_utils.multi_queue_commands)==0:
+            client_socket.send("*0\r\n".encode())
+            return
+        elif args_arr[0].lower()=="exec" and len(redis_utils.multi_queue_commands)>0:
+            while len(redis_utils.multi_queue_commands) !=0:
+                commands = redis_utils.multi_queue_commands.pop(0)
+                choose_argument_and_send_output(client_socket,commands,len(commands))
+        else:
+            redis_utils.multi_queue_commands.append(args_arr)
+            client_socket.send("+QUEUED\r\n".encode())
 
 def choose_argument_and_send_output(
     message_arr: List[str], n_args: int, client_socket: socket, addr: str
@@ -228,7 +249,7 @@ def choose_argument_and_send_output(
     elif message_arr[0].lower() == "incr":
         redis_commands.incr_command_helper(message_arr, n_args, client_socket)
     elif message_arr[0].lower() == "multi":
-        redis_commands.multi_command_helper(message_arr, n_args, client_socket)
+        multi_command_helper(message_arr, n_args, client_socket)
     elif message_arr[0].lower() == "exec":
         client_socket.send("-ERR EXEC without MULTI\r\n".encode())
         

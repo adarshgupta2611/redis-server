@@ -523,19 +523,4 @@ def incr_command_helper(message_arr: List[str], n_args: int, client_socket: sock
         redis_utils.redis_dict.update({key : "1"})
         client_socket.send(":1\r\n".encode())
         
-def multi_command_helper(message_arr: List[str], n_args: int, client_socket: socket):
-    client_socket.send("+OK\r\n".encode())
-    while True:
-        data: bytes = client_socket.recv(1024)
-        if not data:
-            break
-        message: str = data.decode("utf-8")
-        msg_arr: List[str] = message.split("\r\n")
-        args_arr = msg_arr[::2]
-        args_arr.remove(args_arr[0])
-        if args_arr[0].lower()=="exec" and len(redis_utils.multi_queue_commands)==0:
-            client_socket.send("*0\r\n".encode())
-            return
-        else:
-            redis_utils.multi_queue_commands.append(args_arr)
-            client_socket.send("*6QUEUED\r\n".encode())
+
