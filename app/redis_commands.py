@@ -10,6 +10,7 @@ def set_command_helper(
     message_arr: List[str],
     n_args: int,
     client_socket: socket,
+    addr:str = "",
     from_master: bool = False,
     is_multi_command: bool = False
 ):
@@ -27,7 +28,6 @@ def set_command_helper(
         client_socket (socket): _description_
     """
    
-    print(f"In set_command_helper and message_arr is {message_arr}")
     if n_args >= 3:
         index_px = next(
             (i for i, item in enumerate(message_arr) if item.lower() == "px"), -1
@@ -48,7 +48,7 @@ def set_command_helper(
 
             socket.send(resp_msg.encode())
         if is_multi_command:
-            redis_utils.queue_commands_response.append("+OK\r\n")
+            redis_utils.queue_commands_response.get(addr).append("+OK\r\n")
             return
         if not from_master:
             client_socket.send(b"+OK\r\n")
@@ -57,7 +57,7 @@ def set_command_helper(
         client_socket.send(b"-ERR wrong number of arguments for 'SET'\r\n")
 
 
-def get_command_helper(message_arr: List[str], n_args: int, client_socket: socket, is_multi_command: bool = False):
+def get_command_helper(message_arr: List[str], n_args: int, client_socket: socket, addr : str, is_multi_command: bool = False):
     """
     Handles the GET command and retrieves the value associated with the given key from the Redis dictionary.
 
@@ -73,26 +73,26 @@ def get_command_helper(message_arr: List[str], n_args: int, client_socket: socke
     result = redis_utils.redis_dict.get(message_arr[1])
     if not result:
         if is_multi_command:
-            redis_utils.queue_commands_response.append("$-1\r\n")
+            redis_utils.queue_commands_response.get(addr).append("$-1\r\n")
             return
         client_socket.send(b"$-1\r\n")
     elif isinstance(result, str):
         resp = convert_to_resp(redis_utils.redis_dict.get(message_arr[1]))
         if is_multi_command:
-            redis_utils.queue_commands_response.append(resp)
+            redis_utils.queue_commands_response.get(addr).append(resp)
             return
         client_socket.send(resp.encode())
     elif isinstance(result, Tuple):
         if result[1] < now:
             redis_utils.redis_dict.pop(message_arr[1])
             if is_multi_command:
-                redis_utils.queue_commands_response.append("$-1\r\n")
+                redis_utils.queue_commands_response.get(addr).append("$-1\r\n")
                 return
             client_socket.send(b"$-1\r\n")
         else:
             resp = convert_to_resp(result[0])
             if is_multi_command:
-                redis_utils.queue_commands_response.append(resp)
+                redis_utils.queue_commands_response.get(addr).append(resp)
                 return
             client_socket.send(resp.encode())
 
@@ -229,7 +229,6 @@ def xadd_command_helper(message_arr: List[str], n_args: int, client_socket: sock
         xadd_auto_gen_time_seqnum(message_arr, n_args, client_socket,stream_key, stream_key_id)
         return
     if redis_utils.wait_until_new_add_stream:
-        print(f"Setting wait_until_new_add_stream as false for {message_arr}")
         redis_utils.wait_until_new_add_stream = False
     stream_time, stream_seq_num = stream_key_id.split("-")
     if stream_time=="0" and stream_seq_num=="0":
@@ -461,7 +460,6 @@ def xread_command_helper(message_arr: List[str], n_args: int, client_socket: soc
             return 
         if only_new_values:
             stream_list_with_key = [(message_arr[2],only_new_values)]
-            print(f"stream_list_with_key {stream_list_with_key}")            
             response = redis_utils.convert_xread_streams_to_resp(stream_list_with_key)
             client_socket.send(response.encode())
             return
@@ -489,8 +487,6 @@ def xread_command_helper(message_arr: List[str], n_args: int, client_socket: soc
                 return 
             stream_list_with_key.append((key,valid_values))
                     
-        print(f"stream_list_with_key {stream_list_with_key}")            
-                        
                 
         response = redis_utils.convert_xread_streams_to_resp(stream_list_with_key)
         client_socket.send(response.encode())
@@ -501,9 +497,7 @@ def handle_blocking_in_xread(message_arr: List[str]):
         if block_time==0:
             redis_utils.wait_until_new_add_stream = True
             while redis_utils.wait_until_new_add_stream:
-                print(f"In blocked value for msg_ar {message_arr}")
                 time.sleep(0.1)
-            print(f"Exited sleep time for msg_ar {message_arr}")
         else:    
             time.sleep(block_time)
             redis_utils.can_add_redis_stream = False
@@ -519,11 +513,10 @@ def handle_dollar_in_xread(client_socket,n_args,message_arr: List[str], prev_cop
             list2 = new_copy_redis_streams_dict.get(message_arr[2])
             
             diff2 = [item for item in list2 if item not in list1]
-            print(f"Diff2 is {diff2}")
             xread_command_helper(message_arr, n_args, client_socket,new_copy_redis_streams_dict,diff2)
             return
         
-def incr_command_helper(message_arr: List[str], n_args: int, client_socket: socket, is_multi_command: bool = False):
+def incr_command_helper(message_arr: List[str], n_args: int, client_socket: socket,addr: str, is_multi_command: bool = False):
     key = message_arr[1]
     value = redis_utils.redis_dict.get(key, None)
     if value:
@@ -531,12 +524,12 @@ def incr_command_helper(message_arr: List[str], n_args: int, client_socket: sock
             value_int = int(value) + 1
             redis_utils.redis_dict.update({key : str(value_int)})
             if is_multi_command:
-                redis_utils.queue_commands_response.append(f":{value_int}\r\n")
+                redis_utils.queue_commands_response.get(addr).append(f":{value_int}\r\n")
                 return
             client_socket.send(f":{value_int}\r\n".encode())
         except ValueError as e:
             if is_multi_command:
-                redis_utils.queue_commands_response.append("-ERR value is not an integer or out of range\r\n")
+                redis_utils.queue_commands_response.get(addr).append("-ERR value is not an integer or out of range\r\n")
                 return
             client_socket.send("-ERR value is not an integer or out of range\r\n".encode())
         except Exception as e:
@@ -544,7 +537,7 @@ def incr_command_helper(message_arr: List[str], n_args: int, client_socket: sock
     else:
         redis_utils.redis_dict.update({key : "1"})
         if is_multi_command:
-            redis_utils.queue_commands_response.append(":1\r\n")
+            redis_utils.queue_commands_response.get(addr).append(":1\r\n")
             return
         client_socket.send(":1\r\n".encode())
         
