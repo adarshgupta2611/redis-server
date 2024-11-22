@@ -535,6 +535,9 @@ def incr_command_helper(message_arr: List[str], n_args: int, client_socket: sock
                 return
             client_socket.send(f":{value_int}\r\n".encode())
         except ValueError as e:
+            if is_multi_command:
+                redis_utils.queue_commands_response.append("-ERR value is not an integer or out of range\r\n")
+                return
             client_socket.send("-ERR value is not an integer or out of range\r\n".encode())
         except Exception as e:
             print(f"Exception found : {e}")
