@@ -175,6 +175,10 @@ def multi_command_helper(message_arr: List[str], n_args: int, client_socket: soc
         if args_arr[0].lower()=="exec" and len(redis_utils.multi_queue_commands)==0:
             client_socket.send("*0\r\n".encode())
             return
+        elif args_arr[0].lower()=="discard":
+            redis_utils.multi_queue_commands = []
+            client_socket.send("+OK\r\n".encode())
+            return
         elif args_arr[0].lower()=="exec" and len(redis_utils.multi_queue_commands)>0:
             while len(redis_utils.multi_queue_commands) !=0:
                 commands = redis_utils.multi_queue_commands.pop(0)
@@ -260,5 +264,7 @@ def choose_argument_and_send_output(
         multi_command_helper(message_arr, n_args, client_socket,addr)
     elif message_arr[0].lower() == "exec":
         client_socket.send("-ERR EXEC without MULTI\r\n".encode())
+    elif message_arr[0].lower() == "discard":
+        client_socket.send("-ERR DISCARD without MULTI\r\n".encode())
         
     
