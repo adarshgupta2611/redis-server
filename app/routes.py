@@ -1,8 +1,8 @@
 import copy
-from dataclasses import dataclass
 import socket
-import time
+from dataclasses import dataclass
 from typing import List, NamedTuple, Tuple
+
 from app import redis_commands
 from app import redis_utils
 
@@ -19,6 +19,13 @@ class ConnContext:
 
 
 def perform_handshake_with_master(m_conn, port: int):
+    """
+    Performs the handshake with the master server
+
+    Args:
+        m_conn (socket.socket): The connection to the master server
+        port (int): The port of the master server
+    """
     buf = b""
 
     with m_conn:
@@ -55,6 +62,14 @@ def perform_handshake_with_master(m_conn, port: int):
 
 
 def client_loop(conn: socket.socket, from_master: bool = False, prev_buf: bytes = b""):
+    """
+    Main loop for the client
+
+    Args:
+        conn (socket.socket): The connection to the client
+        from_master (bool, optional): Whether the client is connected from the master server. Defaults to False.
+        prev_buf (bytes, optional): The previous buffer. Defaults to b"".
+    """
     print(f"Client loop start {conn}")
     cctx = ConnContext(conn.fileno(), conn)
     with conn:
@@ -80,34 +95,44 @@ def client_loop(conn: socket.socket, from_master: bool = False, prev_buf: bytes 
                     resp_msg = redis_utils.convert_to_resp(msg)
                     resp_msg_bytes = resp_msg.encode()
                     conn.send(resp_msg_bytes)
-                    
-                redis_utils.replica_ack_offset = redis_utils.replica_ack_offset + len(redis_utils.convert_to_resp(" ".join(cmd_str),True).encode())
+
+                redis_utils.replica_ack_offset = redis_utils.replica_ack_offset + len(
+                    redis_utils.convert_to_resp(" ".join(cmd_str), True).encode())
             except (ConnectionError, AssertionError):
                 break
     print(f"Client loop stop {conn}")
 
 
 def get_token(
-    conn: socket.socket,
-    buf: bytes,
-    fixed_size: int | None = None,
-    fixed_type: str | None = None,
+        conn: socket.socket,
+        buf: bytes,
+        fixed_size: int | None = None,
+        fixed_type: str | None = None,
 ) -> tuple[Token, bytes]:
+    """
+    Get a token from the buffer
+
+    Args:
+        conn (socket.socket): The connection to the client
+        buf (bytes): The buffer
+        fixed_size (int | None, optional): The fixed size of the token. Defaults to None.
+        fixed_type (str | None, optional): The fixed type of the token. Defaults to None.
+    """
     while True:
         if fixed_size:
             assert fixed_type
             if len(buf) >= fixed_size:
                 skip_len = 0
-                if buf[fixed_size : fixed_size + 2] == b"\r\n":
+                if buf[fixed_size: fixed_size + 2] == b"\r\n":
                     skip_len = 2
                 return (
                     Token(fixed_type, buf[:fixed_size]),
-                    buf[fixed_size + skip_len :],
+                    buf[fixed_size + skip_len:],
                 )
         else:
             cmd_end = buf.find(b"\r\n")
             if cmd_end != -1:
-                res = (Token(chr(buf[0]), buf[1:cmd_end]), buf[cmd_end + 2 :])
+                res = (Token(chr(buf[0]), buf[1:cmd_end]), buf[cmd_end + 2:])
                 if chr(buf[0]) in "$!=":
                     res = get_token(conn, res[1], int(res[0].data), res[0].type)
                 return res
@@ -161,7 +186,17 @@ def parse_message(message: str) -> Tuple[List[str], int]:
     args_arr = msg_arr[::2]
     return (args_arr, number_of_args)
 
+
 def multi_command_helper(message_arr: List[str], n_args: int, client_socket: socket, addr: str):
+    """
+    Handles the MULTI and EXEC commands
+
+    Args:
+        message_arr (List[str]): The parsed message array
+        n_args (int): The number of arguments in the message array
+        client_socket (socket): The socket representing the connection
+        addr (str): The address of the client for IP sockets
+    """
     client_socket.send("+OK\r\n".encode())
     while True:
         data: bytes = client_socket.recv(1024)
@@ -171,20 +206,21 @@ def multi_command_helper(message_arr: List[str], n_args: int, client_socket: soc
         msg_arr: List[str] = message.split("\r\n")
         args_arr = msg_arr[::2]
         args_arr.remove(args_arr[0])
-        if (redis_utils.multi_queue_commands.get(addr,None) is None and redis_utils.queue_commands_response.get(addr, None) is None):
+        if (redis_utils.multi_queue_commands.get(addr, None) is None and redis_utils.queue_commands_response.get(addr,
+                                                                                                                 None) is None):
             redis_utils.multi_queue_commands.update({addr: []})
             redis_utils.queue_commands_response.update({addr: []})
-        if args_arr[0].lower()=="exec" and len(redis_utils.multi_queue_commands.get(addr))==0:
+        if args_arr[0].lower() == "exec" and len(redis_utils.multi_queue_commands.get(addr)) == 0:
             client_socket.send("*0\r\n".encode())
             return
-        elif args_arr[0].lower()=="discard":
+        elif args_arr[0].lower() == "discard":
             redis_utils.multi_queue_commands = []
             client_socket.send("+OK\r\n".encode())
             return
-        elif args_arr[0].lower()=="exec" and len(redis_utils.multi_queue_commands.get(addr))>0:
-            while len(redis_utils.multi_queue_commands.get(addr)) !=0:
+        elif args_arr[0].lower() == "exec" and len(redis_utils.multi_queue_commands.get(addr)) > 0:
+            while len(redis_utils.multi_queue_commands.get(addr)) != 0:
                 commands = redis_utils.multi_queue_commands.get(addr).pop(0)
-                choose_argument_and_send_output(commands,len(commands),client_socket,addr, True)
+                choose_argument_and_send_output(commands, len(commands), client_socket, addr, True)
             num_response = len(redis_utils.queue_commands_response.get(addr))
             response_string = "".join(redis_utils.queue_commands_response.get(addr))
             response = f"*{num_response}\r\n{response_string}"
@@ -194,33 +230,41 @@ def multi_command_helper(message_arr: List[str], n_args: int, client_socket: soc
             redis_utils.multi_queue_commands.get(addr).append(args_arr)
             client_socket.send("+QUEUED\r\n".encode())
 
+
 def choose_argument_and_send_output(
-    message_arr: List[str], n_args: int, client_socket: socket, addr: str, is_multi_command: bool=False
+        message_arr: List[str], n_args: int, client_socket: socket, addr: str, is_multi_command: bool = False
 ):
     """
-    Chooses the appropriate argument and sends the output to the client based on the command
+    Handles various Redis commands and sends appropriate responses to the client.
 
-    Example:
-        choose_argument_and_send_output(['SET', 'mykey', 'myvalue'], 3, client_socket)
-        choose_argument_and_send_output(['PING'], 1, client_socket)
+    This function processes a list of command arguments and determines the appropriate
+    action based on the command type (e.g., PING, ECHO, SET, GET). It utilizes helper
+    functions to handle specific commands and sends the corresponding response back
+    to the client.
 
     Args:
-        message_arr (List[str]): The arguments extracted from the Redis protocol message
-        n_args (int): The number of arguments
-        client_socket (socket): The socket representing the client connection
+        message_arr (List[str]): The parsed message array containing command arguments.
+        n_args (int): The number of arguments in the message array.
+        client_socket (socket): The socket representing the connection to the client.
+        addr (str): The address of the client for IP sockets.
+        is_multi_command (bool, optional): Whether the command is part of a MULTI/EXEC block. Defaults to False.
+
+    Returns:
+        None
     """
     if message_arr[0].lower() == "ping":
-        client_socket.send(b"+PONG\r\n")
+        client_socket.send("+PONG\r\n".encode())
     elif message_arr[0].lower() == "echo":
         resp_msg = redis_utils.convert_to_resp(message_arr[1])
         client_socket.send(resp_msg.encode())
     elif message_arr[0].lower() == "set":
-        redis_commands.set_command_helper(message_arr, n_args, client_socket,addr, is_multi_command=is_multi_command)
+        redis_commands.set_command_helper(message_arr, n_args, client_socket, addr, is_multi_command=is_multi_command)
     elif message_arr[0].lower() == "get":
         if redis_utils.dir or redis_utils.dbfilename:
             redis_commands.rdb_get_command_helper(message_arr, n_args, client_socket)
         else:
-            redis_commands.get_command_helper(message_arr, n_args, client_socket,addr,is_multi_command= is_multi_command)
+            redis_commands.get_command_helper(message_arr, n_args, client_socket, addr,
+                                              is_multi_command=is_multi_command)
     elif message_arr[0].lower() == "config":
         redis_commands.config_get_command_helper(message_arr, n_args, client_socket)
     elif message_arr[0].lower() == "keys":
@@ -228,13 +272,12 @@ def choose_argument_and_send_output(
     elif message_arr[0].lower() == "info":
         redis_commands.info_command_helper(message_arr, n_args, client_socket)
     elif message_arr[0].lower() == "replconf":
-        if message_arr[1].lower() == "listening-port" or message_arr[1].lower()=="capa":
+        if message_arr[1].lower() == "listening-port" or message_arr[1].lower() == "capa":
             client_socket.send("+OK\r\n".encode())
-        elif message_arr[1].lower()=="ack":
+        elif message_arr[1].lower() == "ack":
             redis_utils.num_replicas_ack += 1
     elif message_arr[0].lower() == "psync":
         if message_arr[1] == "?" and message_arr[2] == "-1":
-
             client_socket.send(
                 "+FULLRESYNC 8371b4fb1155b71f4a04d3e1bc3e18c4a990aeeb 0\r\n".encode()
             )
@@ -242,7 +285,7 @@ def choose_argument_and_send_output(
             rdb_content = bytes.fromhex(rdb_hex)
             rdb_length = f"${len(rdb_content)}\r\n".encode()
             client_socket.send(rdb_length + rdb_content)
-            redis_utils.replica_sockets.update({addr:client_socket})
+            redis_utils.replica_sockets.update({addr: client_socket})
     elif message_arr[0].lower() == "wait":
         redis_commands.wait_command_helper(message_arr, n_args, client_socket)
     elif message_arr[0].lower() == "type":
@@ -250,17 +293,18 @@ def choose_argument_and_send_output(
     elif message_arr[0].lower() == "xadd":
         redis_commands.xadd_command_helper(message_arr, n_args, client_socket)
     elif message_arr[0].lower() == "xrange":
-        redis_commands.xrange_command_helper(message_arr, n_args, client_socket)    
+        redis_commands.xrange_command_helper(message_arr, n_args, client_socket)
     elif message_arr[0].lower() == "xread":
         prev_copy_redis_streams_dict = copy.deepcopy(redis_utils.redis_streams_dict)
         redis_commands.handle_blocking_in_xread(message_arr)
         new_copy_redis_streams_dict = copy.deepcopy(redis_utils.redis_streams_dict)
-        redis_commands.handle_dollar_in_xread(client_socket,n_args,message_arr, prev_copy_redis_streams_dict, new_copy_redis_streams_dict)
-        redis_commands.xread_command_helper(message_arr, n_args, client_socket,new_copy_redis_streams_dict)
+        redis_commands.handle_dollar_in_xread(client_socket, n_args, message_arr, prev_copy_redis_streams_dict,
+                                              new_copy_redis_streams_dict)
+        redis_commands.xread_command_helper(message_arr, n_args, client_socket, new_copy_redis_streams_dict)
     elif message_arr[0].lower() == "incr":
-        redis_commands.incr_command_helper(message_arr, n_args, client_socket,addr,is_multi_command=is_multi_command)
+        redis_commands.incr_command_helper(message_arr, n_args, client_socket, addr, is_multi_command=is_multi_command)
     elif message_arr[0].lower() == "multi":
-        multi_command_helper(message_arr, n_args, client_socket,addr)
+        multi_command_helper(message_arr, n_args, client_socket, addr)
     elif message_arr[0].lower() == "exec":
         client_socket.send("-ERR EXEC without MULTI\r\n".encode())
     elif message_arr[0].lower() == "discard":

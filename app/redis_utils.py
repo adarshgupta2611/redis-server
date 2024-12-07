@@ -16,6 +16,7 @@ wait_until_new_add_stream = False
 multi_queue_commands = {}
 queue_commands_response = {}
 
+
 def convert_to_resp(msg: str, is_arr: bool = False) -> str:
     """
     Converts a string to RESP (Redis Protocol) format
@@ -24,6 +25,8 @@ def convert_to_resp(msg: str, is_arr: bool = False) -> str:
         convert_to_resp("Hello World") -> "*2\r\n$5\r\nHello\r\n$5\r\nWorld\r\n"
 
     Args:
+        is_arr: bool = False
+            Whether the response is an array. If False, the response will be a string
         msg (str): The input string to be converted
 
     Returns:
@@ -95,14 +98,14 @@ def parse_rdb() -> dict[bytes, tuple[bytes, int | None]]:
             _, pos = parse_db_len(data, pos)
             _, pos = parse_db_len(data, pos)
         elif op == 0xFD:
-            exp = int.from_bytes(data[pos : pos + 4], "little") * 1_000
-            exp = int.from_bytes(data[pos : pos + 4], "little") * 1_000_000_000
+            exp = int.from_bytes(data[pos: pos + 4], "little") * 1_000
+            exp = int.from_bytes(data[pos: pos + 4], "little") * 1_000_000_000
             pos += 4
             key, val, pos = parse_keyvalue(data, pos)
             store[key.decode()] = (val.decode(), exp)
         elif op == 0xFC:
-            exp = int.from_bytes(data[pos : pos + 8], "little")
-            exp = int.from_bytes(data[pos : pos + 8], "little") * 1_000_000
+            exp = int.from_bytes(data[pos: pos + 8], "little")
+            exp = int.from_bytes(data[pos: pos + 8], "little") * 1_000_000
             pos += 8
             key, val, pos = parse_keyvalue(data, pos)
             store[key.decode()] = (val.decode(), exp)
@@ -115,6 +118,17 @@ def parse_rdb() -> dict[bytes, tuple[bytes, int | None]]:
 
 
 def parse_db_len(data: bytes, pos: int) -> tuple[int, int]:
+    """
+    Parse the length of the database
+
+    Args:
+        data (bytes): The data to parse
+        pos (int): The current position in the data
+
+    Returns:
+        tuple[int, int]: The length of the database and the new position in the data
+
+    """
     first = data[pos]
     pos += 1
     start = first >> 6
@@ -126,24 +140,47 @@ def parse_db_len(data: bytes, pos: int) -> tuple[int, int]:
         pos += 1
         len = (first << 8) + second
     elif start == 0b10:
-        len = int.from_bytes(data[pos : pos + 4], "little")
+        len = int.from_bytes(data[pos: pos + 4], "little")
         pos += 4
     elif start == 0b11:
         first = first & 0b00111111
-        len = 2**first
+        len = 2 ** first
     else:
         raise Exception(f"Unknown db len type {start} @ {pos}")
     return (len, pos)
 
 
 def parse_db_string(data: bytes, pos: int) -> tuple[bytes, int]:
+    """
+    Parses a string from the Redis RDB data
+
+    Args:
+        data (bytes): The data from which to parse the string
+        pos (int): The current position in the data
+
+    Returns:
+        tuple[bytes, int]: The parsed string and the new position in the data
+    """
     len, pos = parse_db_len(data, pos)
-    vstr = data[pos : pos + len]
+    vstr = data[pos: pos + len]
     pos += len
     return (vstr, pos)
 
 
 def parse_keyvalue(data: bytes, pos: int) -> tuple[bytes, bytes, int]:
+    """
+    Parses a key-value pair from the Redis RDB data
+
+    Args:
+        data (bytes): The data from which to parse the key-value pair
+        pos (int): The current position in the data
+
+    Raises:
+        Exception: If the value type is unsupported
+
+    Returns:
+        tuple[bytes, bytes, int]: The parsed key-value pair and the new position in the data
+    """
     vtype = data[pos]
     if not (vtype == 0 or 9 < vtype < 14):
         raise Exception(f"Unsupported value type {vtype} at {pos}")
@@ -154,6 +191,15 @@ def parse_keyvalue(data: bytes, pos: int) -> tuple[bytes, bytes, int]:
 
 
 def find_time_and_seq(stream_id: str):
+    """
+    Find the time and sequence number from the stream id
+
+    Args:
+        stream_id (str): The stream id in the format "time-sequence"
+
+    Returns:
+        tuple[str, str | None]: A tuple containing the time and sequence number. If the sequence number is not present, it returns None.
+    """
     stream_list = stream_id.split("-")
     if len(stream_list) == 2:
         return (stream_list[0], stream_list[1])
@@ -161,7 +207,15 @@ def find_time_and_seq(stream_id: str):
         return (stream_list[0], None)
 
 
-def convert_xread_streams_to_resp(stream_list_with_key : List[tuple]) -> str:
+def convert_xread_streams_to_resp(stream_list_with_key: List[tuple]) -> str:
+    """
+    summary: Converts a list of tuples containing stream keys and valid stream entries to a RESP-formatted response.
+    Args:
+        stream_list_with_key (List[tuple]): A list of tuples, where each tuple contains a stream key and a list of valid stream entries.
+
+    Returns:
+        str: The RESP-formatted response representing the stream entries.
+    """
     response = f"*{len(stream_list_with_key)}\r\n"
     print(f'Response start {response}')
     if stream_list_with_key:
@@ -171,14 +225,13 @@ def convert_xread_streams_to_resp(stream_list_with_key : List[tuple]) -> str:
             response += "*1\r\n"
             for list_item in valid_values:
                 temp_str = ""
-                for k,v in list_item.items():
-                    if k.lower()=="id":
+                for k, v in list_item.items():
+                    if k.lower() == "id":
                         response += "*2\r\n"
                         response += convert_to_resp(v)
                     else:
                         temp_str += f"{k} {v} "
                 temp_str = temp_str.strip()
                 response += convert_to_resp(temp_str)
-                    
-        
+
     return response

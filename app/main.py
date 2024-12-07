@@ -1,8 +1,9 @@
 import socket
 import threading
-from .routes import accept_client_concurrently, perform_handshake_with_master
-from .redis_utils import redis_args_parse
+
 from app import redis_utils
+from .redis_utils import redis_args_parse
+from .routes import accept_client_concurrently, perform_handshake_with_master
 
 
 def main():
@@ -14,10 +15,11 @@ def main():
     """
     redis_args_parse()
     if redis_utils.replicaof:
-           replica = redis_utils.replicaof.split(" ")
-           master_socket = socket.create_connection((replica[0], int(replica[1])))
-           threading.Thread(target=perform_handshake_with_master,args=(master_socket,redis_utils.port),daemon=True).start()
-           
+        replica = redis_utils.replicaof.split(" ")
+        master_socket = socket.create_connection((replica[0], int(replica[1])))
+        threading.Thread(target=perform_handshake_with_master, args=(master_socket, redis_utils.port),
+                         daemon=True).start()
+
     with socket.create_server(("localhost", redis_utils.port), reuse_port=True) as server_socket:
         server_socket.listen()
 

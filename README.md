@@ -1,60 +1,55 @@
-[![progress-banner](https://backend.codecrafters.io/progress/redis/7103e27c-6ea2-4a7b-940c-488464eda16f)](https://app.codecrafters.io/users/codecrafters-bot?r=2qF)
+# Redis Clone Project
 
-This is a starting point for Python solutions to the
-["Build Your Own Redis" Challenge](https://codecrafters.io/challenges/redis).
+This project is a simplified clone of Redis, a popular in-memory data structure store, used as a database, cache, and message broker. The project implements various Redis functionalities, including handling streams, keys, and replication.
 
-In this challenge, you'll build a toy Redis clone that's capable of handling
-basic commands like `PING`, `SET` and `GET`. Along the way we'll learn about
-event loops, the Redis protocol and more.
+## Features
 
-**Note**: If you're viewing this repo on GitHub, head over to
-[codecrafters.io](https://codecrafters.io) to try the challenge.
+- **Stream Operations**: 
+  - `XADD`: Appends a new entry to a stream with optional auto-generated timestamps and sequence numbers.
+  - `XRANGE`: Retrieves a range of entries from a stream based on specified start and end IDs.
+  - `XREAD`: Reads a range of items from streams, supporting blocking operations to wait for new entries.
 
-# Passing the first stage
+- **Key Operations**:
+  - `GET`: Retrieves the value associated with a given key.
+  - `SET`: Sets the value of a key.
+  - `TYPE`: Returns the type of value associated with a key.
 
-The entry point for your Redis implementation is in `app/main.py`. Study and
-uncomment the relevant code, and push your changes to pass the first stage:
+- **Replication**:
+  - Handles replication configurations and waits for a specified number of replicas to acknowledge write operations.
 
-```sh
-git commit -am "pass 1st stage" # any msg
-git push origin master
+- **Configuration and Info**:
+  - `CONFIG`: Retrieves configuration details.
+  - `INFO`: Provides information about the server.
+
+- **Protocol Conversion**:
+  - Converts strings and stream entries to RESP (Redis Serialization Protocol) format for communication.
+
+## Architecture
+
+- **Main Server**: Listens for client connections and handles incoming commands concurrently.
+- **Command Helpers**: Functions to process specific commands and perform necessary operations.
+- **Utilities**: Helper functions for common tasks such as parsing arguments and converting data formats.
+
+## Getting Started
+
+### Prerequisites
+
+- Python 3.x
+
+### Running the Server
+
+To run the server locally, execute the following command:
+
+```bash
+./your_program.sh
 ```
 
-That's all!
+This script sets up the server on the default port (6379) and starts listening for client connections.
 
-# Stage 2 & beyond
+### Connecting to the Server
 
-Note: This section is for stages 2 and beyond.
+You can use a Redis client or a simple socket connection to interact with this server. Ensure your client is configured to connect to `localhost` on port `6379`.
 
-1. Ensure you have `python (3.x)` installed locally
-1. Run `./your_program.sh` to run your Redis server, which is implemented in
-   `app/main.py`.
-1. Commit your changes and run `git push origin master` to submit your solution
-   to CodeCrafters. Test output will be streamed to your terminal.
+## License
 
-# Troubleshooting
-
-## module `socket` has no attribute `create_server`
-
-When running your server locally, you might see an error like this:
-
-```
-Traceback (most recent call last):
-  File "/.../python3.7/runpy.py", line 193, in _run_module_as_main
-    "__main__", mod_spec)
-  File "/.../python3.7/runpy.py", line 85, in _run_code
-    exec(code, run_globals)
-  File "/app/app/main.py", line 11, in <module>
-    main()
-  File "/app/app/main.py", line 6, in main
-    s = socket.create_server(("localhost", 6379), reuse_port=True)
-AttributeError: module 'socket' has no attribute 'create_server'
-```
-
-This is because `socket.create_server` was introduced in Python 3.8, and you
-might be running an older version.
-
-You can fix this by installing Python 3.8 locally and using that.
-
-If you'd like to use a different version of Python, change the `language_pack`
-value in `codecrafters.yml`.
+This project is licensed under the MIT License.
